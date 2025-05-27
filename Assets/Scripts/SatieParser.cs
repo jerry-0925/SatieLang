@@ -5,32 +5,27 @@ using UnityEngine;
 
 namespace Satie
 {
-    // One entry per “loop/oneshot” block in the script.
     public sealed class Statement
     {
-        // Playback
-        public string kind;                    // "loop" | "oneshot"
+        public string kind;
         public string clip;
         public RangeOrValue starts_at = RangeOrValue.Zero;
-        public RangeOrValue duration = RangeOrValue.Null;  // loop-only
-        public RangeOrValue every = RangeOrValue.Zero;  // oneshot
+        public RangeOrValue duration = RangeOrValue.Null;
+        public RangeOrValue every = RangeOrValue.Zero;
         public RangeOrValue volume = new(1f);
         public RangeOrValue pitch = new(1f);
         public bool         overlap = false;
-        public float        fade_in = 0f;
-        public float        fade_out = 0f;
+        public RangeOrValue fade_in = RangeOrValue.Zero;
+        public RangeOrValue fade_out = RangeOrValue.Zero;
 
-        // Spatial movement
         public enum WanderType { None, Walk, Fly, Fixed }
         public WanderType wanderType = WanderType.None;
-        public Vector3 areaMin, areaMax;   // rect / box / fixed point
-        public float   wanderHz = 0.3f;    // speed for Walk / Fly
+        public Vector3 areaMin, areaMax;
+        public RangeOrValue wanderHz = new(0.3f);
 
-        // Debug helpers
-        public bool visualize = false;     // add TrailRenderer if true
+        public bool visualize = false;
     }
 
-    // Utility: single value or min..max range with easy sampling.
     public readonly struct RangeOrValue
     {
         public readonly float min, max;
@@ -40,7 +35,7 @@ namespace Satie
         public static readonly RangeOrValue Null = default;
 
         public RangeOrValue(float v) { min = max = v; isRange = false; isSet = true; }
-        public RangeOrValue(float a, float b) { min = a; max = b; isRange = true;  isSet = true; }
+        public RangeOrValue(float a, float b) { min = a; max = b; isRange = true; isSet = true; }
 
         public float Sample() => !isSet ? 0f : (isRange ? Random.Range(min, max) : min);
 
@@ -56,21 +51,17 @@ namespace Satie
         }
     }
 
-    // Main parser.
     public static class SatieParser
     {
-        // Matches header line + indented block.
         static readonly Regex StmtRx = new(
             @"^(?<kind>loop|oneshot)\s+""(?<clip>.+?)""\s*(?:every\s+(?<e1>\d+\.?\d*)\.\.(?<e2>\d+\.?\d*))?\s*:\s*\r?\n" +
             @"(?<block>(?:[ \t]+.*\r?\n?)*)",
             RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        // Matches “key = value” inside block.
         static readonly Regex PropRx = new(
             @"^[ \t]+(?<key>\w+)\s*=\s*(?<val>[^\r\n#]+)",
             RegexOptions.Multiline | RegexOptions.Compiled);
 
-        // Public entry: parse whole file.
         public static List<Statement> Parse(string scriptText)
         {
             var list = new List<Statement>();
@@ -98,9 +89,9 @@ namespace Satie
                         case "volume": s.volume = RangeOrValue.Parse(v); break;
                         case "pitch": s.pitch = RangeOrValue.Parse(v); break;
                         case "starts_at": s.starts_at = RangeOrValue.Parse(v); break;
-                        case "duration": s.duration  = RangeOrValue.Parse(v); break;
-                        case "fade_in": s.fade_in = float.Parse(v); break;
-                        case "fade_out": s.fade_out = float.Parse(v); break;
+                        case "duration": s.duration = RangeOrValue.Parse(v); break;
+                        case "fade_in": s.fade_in = RangeOrValue.Parse(v); break;
+                        case "fade_out": s.fade_out = RangeOrValue.Parse(v); break;
                         case "overlap": s.overlap = v.ToLower().StartsWith("t"); break;
                         case "visualize": s.visualize = v.ToLower().StartsWith("t"); break;
                         case "move": ParseMove(s, v); break;
@@ -111,42 +102,34 @@ namespace Satie
             return list;
         }
 
-        // Helper: remove extension, add Resources/Audio prefix.
         public static string PathFor(string clip)
         {
             if (string.IsNullOrWhiteSpace(clip))
                 return string.Empty;
 
-            // Normalise separators
             var clean = clip.Replace('\\', '/').TrimStart('/');
-
-            // Strip trailing extension (".wav", ".mp3", …) if present
             int dot = clean.LastIndexOf('.');
             if (dot >= 0) clean = clean[..dot];
-
-            // Pre-pend “Audio/” unless the author already put it there
             if (!clean.StartsWith("Audio/"))
                 clean = $"Audio/{clean}";
-
             return clean;
         }
 
-        // Parses “move = …” forms: walk | fly | pos
         static void ParseMove(Statement s, string v)
         {
             string[] tok = v.Split(',');
             if (tok.Length < 4) { Debug.LogError("move: not enough parameters"); return; }
 
             static (float, float) Range(string str)
-        {
-            if (str.Contains(".."))
             {
-                var p = str.Split("..");
-                return (float.Parse(p[0]), float.Parse(p[1]));
+                if (str.Contains(".."))
+                {
+                    var p = str.Split("..");
+                    return (float.Parse(p[0]), float.Parse(p[1]));
+                }
+                float v = float.Parse(str);
+                return (v, v);
             }
-            float v = float.Parse(str);
-            return (v, v);
-        }
 
             string mode = tok[0].Trim().ToLower();
 
@@ -157,7 +140,7 @@ namespace Satie
                 s.wanderType = Statement.WanderType.Walk;
                 s.areaMin = new Vector3(xmin, 0f, zmin);
                 s.areaMax = new Vector3(xmax, 0f, zmax);
-                s.wanderHz = float.Parse(tok[3]);
+                s.wanderHz = RangeOrValue.Parse(tok[3]);
             }
             else if (mode == "fly" && tok.Length == 5)
             {
@@ -167,7 +150,7 @@ namespace Satie
                 s.wanderType = Statement.WanderType.Fly;
                 s.areaMin = new Vector3(xmin, ymin, zmin);
                 s.areaMax = new Vector3(xmax, ymax, zmax);
-                s.wanderHz = float.Parse(tok[4]);
+                s.wanderHz = RangeOrValue.Parse(tok[4]);
             }
             else if (mode == "pos" && tok.Length == 4)
             {
