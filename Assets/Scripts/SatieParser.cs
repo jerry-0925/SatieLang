@@ -113,7 +113,23 @@ namespace Satie
 
         // Helper: remove extension, add Resources/Audio prefix.
         public static string PathFor(string clip)
-            => $"Audio/{Path.GetFileNameWithoutExtension(clip)}";
+        {
+            if (string.IsNullOrWhiteSpace(clip))
+                return string.Empty;
+
+            // Normalise separators
+            var clean = clip.Replace('\\', '/').TrimStart('/');
+
+            // Strip trailing extension (".wav", ".mp3", …) if present
+            int dot = clean.LastIndexOf('.');
+            if (dot >= 0) clean = clean[..dot];
+
+            // Pre-pend “Audio/” unless the author already put it there
+            if (!clean.StartsWith("Audio/"))
+                clean = $"Audio/{clean}";
+
+            return clean;
+        }
 
         // Parses “move = …” forms: walk | fly | pos
         static void ParseMove(Statement s, string v)
