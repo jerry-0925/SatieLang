@@ -110,8 +110,13 @@ public class SatieRuntime : MonoBehaviour
     AudioSource SpawnSource(Statement s)
     {
         var clip = Resources.Load<AudioClip>(SatieParser.PathFor(s.clip));
-        if (!clip) { Debug.LogWarning($"Clip '{s.clip}' missing."); return null; }
-
+        if (!clip)
+        {
+            Debug.LogWarning($"[Satie] Audio clip '{s.clip}' not found. "
+                             + $"Looked for Resources/{SatieParser.PathFor(s.clip)}.*");
+            return null;
+        }
+        
         var go = new GameObject($"[SP] {s.clip}");
         go.transform.SetParent(transform);
 
