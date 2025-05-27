@@ -1,0 +1,69 @@
+# SatieLang
+
+SatieLang is a Domain Specific Language (DSL) designed for generative and event-based audio scripting within the Unity game engine. It allows you to define complex audio behaviors with a simple, declarative syntax, managing audio playback, spatialization, and parameter randomization with ease.
+
+## Table of Contents
+
+* [Getting Started](#getting-started)
+    * [Prerequisites](#prerequisites)
+    * [Quick Start: "Birds" Demo Scene](#quick-start-birds-demo-scene)
+    * [Setting Up a New Scene](#setting-up-a-new-scene)
+    * [Creating a Satie Script](#creating-a-satie-script)
+* [SatieLang Overview](#satielang-overview)
+    * [Core Concepts](#core-concepts)
+    * [Script Structure](#script-structure)
+* [Language Reference](#language-reference)
+    * [Statements (`loop`, `oneshot`)](#statements-loop-oneshot)
+    * [Audio Clip Specification](#audio-clip-specification)
+    * [Properties](#properties)
+        * [Timing & Scheduling](#timing--scheduling)
+        * [Audio Parameters](#audio-parameters)
+        * [Spatialization (`move`)](#spatialization-move)
+        * [Utilities](#utilities)
+    * [Values and Ranges (`RangeOrValue`)](#values-and-ranges-rangeorvalue)
+* [How Audio Clips Are Resolved](#how-audio-clips-are-resolved)
+* [Runtime Features](#runtime-features)
+    * [SatieRuntime Component](#satieruntime-component)
+    * [Hot Reloading](#hot-reloading)
+* [Example Satie Script](#example-satie-script)
+
+## Getting Started
+
+### Prerequisites
+
+You need **Unity 2022.3.13f1**. You can download it from the Unity Hub or the Unity Download Archive:
+* [Unity Download Archive](https://unity.com/releases/editor/archive) (Search for 2022.3.13)
+
+### Quick Start: "Birds" Demo Scene
+
+The repository includes a demo scene to help you get started quickly:
+1.  Open the SatieLang project in Unity.
+2.  Navigate to the `Assets` folder in the Project window.
+3.  Open the scene named **"Birds"**.
+4.  Press Play to experience SatieLang in action. Examine the Satie Script (`.sat` file) and the `SatieRuntime` component in the scene to see how it's configured.
+
+### Setting Up a New Scene
+
+To use SatieLang in your own Unity scene:
+
+1.  Create a new scene (File > New Scene).
+2.  Create an empty GameObject (GameObject > Create Empty). You might want to name it something like "SatieAudioSystem".
+3.  With the new GameObject selected, click "Add Component" in the Inspector window.
+4.  Search for and add the **`SatieRuntime`** component.
+5.  You will need a Satie Script to drive the audio. Create one as described below and assign it to the `Script File` field in the `SatieRuntime` component.
+
+### Creating a Satie Script
+
+SatieLang scripts are plain text files with a `.sat` extension. You can create them easily within Unity:
+
+1.  In the Project window, navigate to the folder where you want to create your script (e.g., `Assets/AudioScripts`).
+2.  Right-click in the folder.
+3.  Select **Create > Satie Script (.sat)**.
+4.  Unity will create a new Satie script file (e.g., `NewSatieScript.sat`) with some default content. Rename it as desired.
+
+The default content will be:
+```satie
+# Satie script
+loop "forest":
+    volume   = 0.8
+    fade_in  = 1
