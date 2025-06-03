@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.0040724664, g: 0.00022270267, b: 0.000000056394708, a: 1}
+  m_IndirectSpecularColor: {r: 0.0040724576, g: 0.00022270235, b: 0.000000056394708, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -320,7 +320,7 @@ GameObject:
   - component: {fileID: 1228820744}
   - component: {fileID: 1228820743}
   m_Layer: 0
-  m_Name: Satie
+  m_Name: Satie Runtime
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -338,7 +338,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 571ab9772484754459a267c6b3e548c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scriptFile: {fileID: 2811297602134710623, guid: f2113e1f225f88049a92d3a547d9f577, type: 3}
+  scriptFile: {fileID: 2811297602134710623, guid: a57607573ba964000828a1716099c931, type: 3}
 --- !u!4 &1228820744
 Transform:
   m_ObjectHideFlags: 0
