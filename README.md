@@ -2,31 +2,6 @@
 
 SatieLang is a Domain Specific Language (DSL) designed for generative and event-based audio scripting within the Unity game engine. It allows you to define complex audio behaviors with a simple, declarative syntax, managing audio playback, spatialization, and parameter randomization with ease.
 
-## Table of Contents
-
-* [Getting Started](#getting-started)
-    * [Prerequisites](#prerequisites)
-    * [Quick Start: "Birds" Demo Scene](#quick-start-birds-demo-scene)
-    * [Setting Up a New Scene](#setting-up-a-new-scene)
-    * [Creating a Satie Script](#creating-a-satie-script)
-* [SatieLang Overview](#satielang-overview)
-    * [Core Concepts](#core-concepts)
-    * [Script Structure](#script-structure)
-* [Language Reference](#language-reference)
-    * [Statements (`loop`, `oneshot`)](#statements-loop-oneshot)
-    * [Audio Clip Specification](#audio-clip-specification)
-    * [Properties](#properties)
-        * [Timing & Scheduling](#timing--scheduling)
-        * [Audio Parameters](#audio-parameters)
-        * [Spatialization (`move`)](#spatialization-move)
-        * [Utilities](#utilities)
-    * [Values and Ranges (`RangeOrValue`)](#values-and-ranges-rangeorvalue)
-* [How Audio Clips Are Resolved](#how-audio-clips-are-resolved)
-* [Runtime Features](#runtime-features)
-    * [SatieRuntime Component](#satieruntime-component)
-    * [Hot Reloading](#hot-reloading)
-* [Example Satie Script](#example-satie-script)
-
 ## Getting Started
 
 ### Prerequisites
