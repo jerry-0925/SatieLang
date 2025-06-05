@@ -7,5 +7,5 @@
 # The sound will randomly trigger once every 3 to 5 seconds — useful for ambient chatter or occasional voice lines.
 
 
-oneshot "conversation/hello" every 3..5:
+oneshot "conversation/hello" every 5..6:
     volume = 1
