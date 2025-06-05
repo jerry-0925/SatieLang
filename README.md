@@ -9,12 +9,12 @@ SatieLang is a Domain Specific Language (DSL) designed for generative and event-
 You need **Unity 2022.3.13f1**. You can download it from the Unity Hub or the Unity Download Archive:
 * [Unity Download Archive](https://unity.com/releases/editor/archive) (Search for 2022.3.13)
 
-### Quick Start: "Birds" Demo Scene
+### Quick Start: "Hello World" Demo Scene
 
 The repository includes a demo scene to help you get started quickly:
 1.  Open the SatieLang project in Unity.
-2.  Navigate to the `Assets` folder in the Project window.
-3.  Open the scene named **"Birds"**.
+2.  Navigate to the `Assets > Tutorial` folder in the Project window.
+3.  Open the scene named **"Hello World"**.
 4.  Press Play to experience SatieLang in action. Examine the Satie Script (`.sat` file) and the `SatieRuntime` component in the scene to see how it's configured.
 
 ### Setting Up a New Scene
@@ -39,6 +39,6 @@ SatieLang scripts are plain text files with a `.sat` extension. You can create t
 The default content will be:
 ```satie
 # Satie script
-loop "forest":
-    volume   = 0.8
-    fade_in  = 1
+loop "hello":
+    volume = 0.8
+    pitch = 0.8..1.2
