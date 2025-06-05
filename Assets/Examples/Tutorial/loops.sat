@@ -1,9 +1,0 @@
-# Loops
-# loops are very useful for any sound that is constant
-loop "ambience/forest":
-    volume = 0.8
-
-loop "ambience/water":
-    volume = 0.3
-    pitch = 0.8..1.2
-

@@ -1,6 +1,0 @@
-# Hello World!
-
-# oneshot means it's a discrete sound event (as opposed to a loop)
-# this event will trigger every 3 to 5 seconds
-oneshot "conversation/hello" every 3..5:
-    volume = 1 

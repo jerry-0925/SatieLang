@@ -1,0 +1,11 @@
+# Hello World!
+
+# 'oneshot' defines a single, non-looping sound event — great for short samples like voice lines, hits, or UI sounds.
+# This event plays the clip "conversation/hello", which should be located at:
+# Assets/Resources/Audio/conversation/hello.wav (or .mp3, .ogg, etc.)
+# Unity will load this using the Resources system, so the path is relative to Resources/Audio (without the extension).
+# The sound will randomly trigger once every 3 to 5 seconds — useful for ambient chatter or occasional voice lines.
+
+
+oneshot "conversation/hello" every 3..5:
+    volume = 1
