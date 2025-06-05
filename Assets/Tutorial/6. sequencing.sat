@@ -1,0 +1,26 @@
+# Sequencing
+# You can layer multiple loops of the same clip with different start times, durations, and parameters.
+# This creates evolving, non-repetitive textures — useful for ambient music or generative soundscapes.
+#
+# - 'starts_at' means when (in seconds) the track begins after the group is triggered.
+# - 'duration' defines how long the track exists before stopping completely — it does not restart or loop again.
+
+loop "music/drone":
+    volume = 0.2           # base layer with strong presence
+    starts_at = 1          # starts 1 second after group begins
+    fade_in = 35           # slow fade-in
+    duration = 60          # removed after 60 seconds
+
+loop "music/drone":
+    volume = 0.08
+    pitch = 2              # two octaves up for tonal variation
+    starts_at = 10         # starts 10 seconds into the group
+    fade_in = 30..40       # randomized fade-in duration
+    duration = 50          # removed after 50 seconds
+
+loop "music/drone":
+    volume = 0.04
+    pitch = 2.5            # even higher pitch, very subtle layer
+    starts_at = 15         # starts after 15 seconds
+    fade_in = 35
+    duration = 35

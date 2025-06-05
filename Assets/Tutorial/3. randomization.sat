@@ -1,0 +1,10 @@
+# Randomization
+# In Satie, most numerical values can be randomized using the range syntax: 5..10
+# This replaces verbose patterns like Random.Range(5, 10) in code
+# You can also randomize file selection using ranges in filenames (e.g., "bicycle/1..30")
+
+oneshot "bicycle/1..30" every 0.5..1:
+    volume = 0.5..1       # random volume between 50% and 100%
+    pitch = 0.5..1.5      # random pitch from half-speed to 1.5x
+    move = fly, -5..5, 0..5, -5..5, 0.06
+    # 'move = fly' makes the sound drift in space, with randomized XYZ bounds and speed

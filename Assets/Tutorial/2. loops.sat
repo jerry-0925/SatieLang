@@ -1,0 +1,11 @@
+# Loops
+# loops are useful for continuous or ambient sounds that should stay active in the background
+
+loop "ambience/forest":
+    volume = 0.1        # subtle, steady presence
+    fade_in = 5
+
+loop "ambience/water":
+    volume = 0.08        # quieter, more subtle
+    pitch = 0.8..1.2    # pitch varies slightly on each loop, adding natural variation
+    fade_in = 10
