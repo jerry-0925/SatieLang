@@ -42,3 +42,8 @@ The default content will be:
 loop "hello":
     volume = 0.8
     pitch = 0.8..1.2
+```
+
+### Full Tutorial
+For a complete walkthrough of SatieLang syntax, usage, and examples, see the [SatieLang Tutorial](https://github.com/mateolarreaferro/SatieLang/blob/main/Assets/Tutorial.md).
+
