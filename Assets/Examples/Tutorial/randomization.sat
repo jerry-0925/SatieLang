@@ -5,3 +5,4 @@
 oneshot "bicycle/1..30" every 1..2:
     volume = 0.5..1
     pitch = 0.5..1.5
+    move = fly, -5..5, 0..5, -5..5, 0.06
