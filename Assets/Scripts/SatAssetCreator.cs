@@ -7,10 +7,10 @@ using UnityEngine;
 static class SatAssetCreator
 {
     private const string kDefaultContent =
-        @"# Satie script
-loop ""forest"":
-    volume   = 0.8
-    fade_in  = 1
+        @"# Satie Script - Hello World!
+loop ""hello"":
+    volume = 0.8
+    pitch = 0.8..1.2
 ";
 
     [MenuItem("Assets/Create/Satie Script (.sat)", false, 82)]
@@ -30,13 +30,8 @@ loop ""forest"":
     {
         public override void Action(int instanceId, string pathName, string resourceFile)
         {
-            // Write the file to disk
             File.WriteAllText(pathName, kDefaultContent);
-
-            // Tell Unity a new file exists right there
             AssetDatabase.ImportAsset(pathName, ImportAssetOptions.ForceUpdate);
-
-            // Load it so ProjectWindowUtil can select / ping it
             var asset = AssetDatabase.LoadAssetAtPath<TextAsset>(pathName);
             ProjectWindowUtil.ShowCreatedAsset(asset);
         }

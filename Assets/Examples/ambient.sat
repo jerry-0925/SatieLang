@@ -41,6 +41,7 @@ fade_out = 15
 
 group music:
 duration = 60
+pitch = 0.5
     loop "music/drone":
         volume = 0.07
         starts_at = 20

@@ -1,0 +1,4 @@
+# Satie script
+loop "forest":
+    volume   = 0.8
+    fade_in  = 1

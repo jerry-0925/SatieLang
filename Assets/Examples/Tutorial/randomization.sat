@@ -1,0 +1,7 @@
+# Randomization
+# In Satie, you can randomize the grand majority of numerical values
+# Instead of doing Random.Range(5, 10), you can simply do 5..10
+
+oneshot "bicycle/1..30" every 1..2:
+    volume = 0.5..1
+    pitch = 0.5..1.5
