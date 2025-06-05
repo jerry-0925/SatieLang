@@ -38,7 +38,7 @@ SatieLang scripts are plain text files with a `.sat` extension. You can create t
 
 The default content will be:
 ```satie
-# Satie script
+# Satie Script - Hello World
 loop "hello":
     volume = 0.8
     pitch = 0.8..1.2
