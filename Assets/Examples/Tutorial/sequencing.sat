@@ -1,4 +1,19 @@
-# Satie script
-loop "forest":
-    volume   = 0.8
-    fade_in  = 1
+loop "music/drone":
+    volume = 0.2
+    starts_at = 1
+    fade_in = 35
+    duration = 60
+loop "music/drone":
+    volume = 0.08
+    pitch = 2
+    starts_at = 10
+    fade_in = 30..40
+    duration = 50
+loop "music/drone":
+    volume = 0.04
+    pitch = 2.5
+    starts_at = 15
+    fade_in = 35
+    duration = 35
+
+  
