@@ -63,6 +63,11 @@ namespace Satie
             @"(?<block>(?:[ \t]+.*\r?\n?)*)",
             RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+        // pattern to recognise the start of a statement line, with optional count prefix
+        static readonly Regex StmtStartRx = new(
+            @"^(?:\d+\s*\*\s*)?(?:loop|oneshot)\b",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
         static readonly Regex PropRx = new(
             @"^[ \t]*(?<key>\w+)\s*=\s*(?<val>[^\r\n#]+)",
             RegexOptions.Multiline | RegexOptions.Compiled);
@@ -94,8 +99,7 @@ namespace Satie
                 //  close grp?
                 if (grp != null &&
                     indent == grp.indent &&
-                    (body.StartsWith("loop ",   true, null) ||
-                     body.StartsWith("oneshot ",true, null) ||
+                    (StmtStartRx.IsMatch(body) ||
                      body.StartsWith("group ",  true, null) ||
                      body.StartsWith("endgroup",true, null)))
                 {
@@ -113,8 +117,7 @@ namespace Satie
                 }
 
                 // statement
-                if (body.StartsWith("loop ", true, null) ||
-                    body.StartsWith("oneshot ", true, null))
+                if (StmtStartRx.IsMatch(body))
                 {
                     int stmtIndent = indent;
                     var sb = new StringBuilder();
