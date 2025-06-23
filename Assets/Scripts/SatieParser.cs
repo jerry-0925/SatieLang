@@ -9,6 +9,7 @@ namespace Satie
     {
         public string kind;
         public string clip;
+        public int    count = 1;
         public RangeOrValue starts_at = RangeOrValue.Zero;
         public RangeOrValue duration = RangeOrValue.Null;
         public RangeOrValue every = RangeOrValue.Zero;
@@ -58,7 +59,7 @@ namespace Satie
     public static class SatieParser
     {
         static readonly Regex StmtRx = new(
-            @"^(?<kind>loop|oneshot)\s+""(?<clip>.+?)""\s*(?:every\s+(?<e1>\d+\.?\d*)\.\.(?<e2>\d+\.?\d*))?\s*:\s*\r?\n" +
+            @"^(?:(?<count>\d+)\s*\*\s*)?(?<kind>loop|oneshot)\s+""(?<clip>.+?)""\s*(?:every\s+(?<e1>\d+\.?\d*)\.\.(?<e2>\d+\.?\d*))?\s*:\s*\r?\n" +
             @"(?<block>(?:[ \t]+.*\r?\n?)*)",
             RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -169,7 +170,8 @@ namespace Satie
             var s = new Statement
             {
                 kind = m.Groups["kind"].Value.ToLower(),
-                clip = m.Groups["clip"].Value.Trim()
+                clip = m.Groups["clip"].Value.Trim(),
+                count = m.Groups["count"].Success ? int.Parse(m.Groups["count"].Value) : 1
             };
 
             if (m.Groups["e1"].Success)
