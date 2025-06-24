@@ -1,6 +1,3 @@
-loop "ambience/rain":
-    volume = 0.05
-    fade_in = 3
 
 
 3 * oneshot "animals/cow2" every 5..10:

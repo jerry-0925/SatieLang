@@ -65,6 +65,13 @@ loop "ambience/water":
     pitch = 0.8..1.2
     fade_in = 10
 ```
+- You can spawn multiple simultaneous loops by prefixing with a number and `*`.
+  This example layers three copies of the same ambience:
+```satie
+3 * loop "ambience/forest":
+    volume = 0.05
+    pitch = 0.9..1.1
+```
 - Loops are great for ambience
 - Fade-ins help avoid abrupt starts
 

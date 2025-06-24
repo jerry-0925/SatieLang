@@ -34,7 +34,8 @@ public class SatieRuntime : MonoBehaviour
         if (fullReset) HardReset();
 
         foreach (var stmt in SatieParser.Parse(scriptFile.text))
-            schedulers.Add(StartCoroutine(RunStmt(stmt)));
+            for (int i = 0; i < Mathf.Max(1, stmt.count); ++i)
+                schedulers.Add(StartCoroutine(RunStmt(stmt)));
 
         Debug.Log($"[SP] Synced ({(fullReset ? "full" : "delta")}).");
     }

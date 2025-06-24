@@ -44,6 +44,16 @@ loop "hello":
     pitch = 0.8..1.2
 ```
 
+You can also spawn multiple copies of a loop or oneshot by prefixing the
+statement with a number and `*`. For example, the following plays four
+independent loops of the same clip:
+
+```satie
+4 * loop "hello":
+    volume = 0.8
+    pitch = 0.8..1.2
+```
+
 ### Full Tutorial
 For a complete walkthrough of SatieLang syntax, usage, and examples, see the [SatieLang Tutorial](https://github.com/mateolarreaferro/SatieLang/blob/main/Assets/Tutorial.md).
 
