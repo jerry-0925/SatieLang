@@ -16,8 +16,8 @@ namespace Satie
         public RangeOrValue volume = new(1f);
         public RangeOrValue pitch = new(1f);
         public bool overlap = false;
-        public RangeOrValue fade_in = RangeOrValue.Zero;
-        public RangeOrValue fade_out = RangeOrValue.Zero;
+        public RangeOrValue fade_in = RangeOrValue.Null;
+        public RangeOrValue fade_out = RangeOrValue.Null;
 
         public enum WanderType { None, Walk, Fly, Fixed }
         public WanderType wanderType = WanderType.None;
@@ -207,11 +207,16 @@ namespace Satie
         {
             bool hasVol = g.props.TryGetValue("volume", out string vRaw);
             bool hasPitch = g.props.TryGetValue("pitch",  out string pRaw);
-            float gVol = hasVol   ? RangeOrValue.Parse(vRaw).Sample()  : 1f;
-            float gPitch = hasPitch ? RangeOrValue.Parse(pRaw).Sample()  : 1f;
+            RangeOrValue gVolRange = hasVol ? RangeOrValue.Parse(vRaw) : new RangeOrValue(1f);
+            RangeOrValue gPitchRange = hasPitch ? RangeOrValue.Parse(pRaw) : new RangeOrValue(1f);
 
             foreach (var s in g.children)
             {
+                // Volume and pitch multiply with group values
+                // Sample per statement so each gets its own random value if group has a range
+                float gVol = gVolRange.Sample();
+                float gPitch = gPitchRange.Sample();
+                
                 if (hasVol) s.volume = s.volume.isSet ? s.volume.Mul(gVol) : new RangeOrValue(gVol);
                 if (hasPitch) s.pitch = s.pitch.isSet  ? s.pitch .Mul(gPitch) : new RangeOrValue(gPitch);
 
