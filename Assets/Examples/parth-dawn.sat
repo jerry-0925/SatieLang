@@ -1,23 +1,23 @@
 
 
-3 * oneshot "animals/cow2" every 5..10:
-    volume = 0.1..0.2
-    pitch = 0.5..1.2
-    fade_in = 5..10
-    move = fly, -20..20, 0..10, -15..10, 0.01
+3 * oneshot "animals/cow2" every 5to10:
+    volume = 0.1to0.2
+    pitch = 0.5to1.2
+    fade_in = 5to10
+    move = fly, -20to20, 0to10, -15to10, 0.01
     visualize = true
 
-oneshot "animals/cicada" every 5..10:
-    volume = 0.1..0.2
-    pitch = 0.5..1.2
-    fade_in = 5..10
+oneshot "animals/cicada" every 5to10:
+    volume = 0.1to0.2
+    pitch = 0.5to1.2
+    fade_in = 5to10
     visualize = true
 
 
 
-oneshot "bird/1..3" every 4..10:
-    pitch = 0.6..1
-    volume = 0.01..0.1
-    move = fly, -20..20, 0..10, -15..10, 0.01
+oneshot "bird/1to3" every 4to10:
+    pitch = 0.6to1
+    volume = 0.01to0.1
+    move = fly, -20to20, 0to10, -15to10, 0.01
 
 
