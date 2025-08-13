@@ -43,9 +43,9 @@ namespace Satie
         public static RangeOrValue Parse(string s)
         {
             if (string.IsNullOrWhiteSpace(s)) return Null;
-            if (s.Contains(".."))
+            if (s.Contains("to"))
             {
-                var p = s.Split("..");
+                var p = s.Split(new[] { "to" }, System.StringSplitOptions.None);
                 return new(float.Parse(p[0]), float.Parse(p[1]));
             }
             return new(float.Parse(s));
@@ -59,7 +59,7 @@ namespace Satie
     public static class SatieParser
     {
         static readonly Regex StmtRx = new(
-            @"^(?:(?<count>\d+)\s*\*\s*)?(?<kind>loop|oneshot)\s+""(?<clip>.+?)""\s*(?:every\s+(?<e1>\d+\.?\d*)\.\.(?<e2>\d+\.?\d*))?\s*:\s*\r?\n" +
+            @"^(?:(?<count>\d+)\s*\*\s*)?(?<kind>loop|oneshot)\s+""(?<clip>.+?)""\s*(?:every\s+(?<e1>-?\d+\.?\d*)to(?<e2>-?\d+\.?\d*))?\s*:\s*\r?\n" +
             @"(?<block>(?:[ \t]+.*\r?\n?)*)",
             RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -245,7 +245,7 @@ namespace Satie
 
             static (float,float) R(string str)
             {
-                if (str.Contains("..")) { var p=str.Split(".."); return (float.Parse(p[0]),float.Parse(p[1])); }
+                if (str.Contains("to")) { var p=str.Split(new[] { "to" }, System.StringSplitOptions.None); return (float.Parse(p[0]),float.Parse(p[1])); }
                 float f=float.Parse(str); return (f,f);
             }
 

@@ -10,7 +10,7 @@ static class SatAssetCreator
         @"# Satie Script - Hello World!
 loop ""hello"":
     volume = 0.8
-    pitch = 0.8..1.2
+    pitch = 0.8to1.2
 ";
 
     [MenuItem("Assets/Create/Satie Script (.sat)", false, 82)]

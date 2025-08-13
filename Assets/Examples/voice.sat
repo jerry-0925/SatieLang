@@ -1,39 +1,39 @@
 group onshots:
 volume = 0.6
-    oneshot "voice/1..40" every 1..3:
-        volume = 0.2..0.5
-        move = walk, -10..10, -10..10, 0.05..0.06
-    oneshot "voice/1..40" every 1..3:
-        volume = 0.2..0.5
-        move = walk, -10..10, -10..10, 0.05..0.06
-    oneshot "voice/1..40" every 1..5:
-        volume = 0.2..0.5
-        move = walk, -10..10, -10..10, 0.05..0.06
-    oneshot "voice/1..40" every 1..3:
-        volume = 0.2..0.5
-        move = walk, -10..10, -10..10, 0.05..0.06
-    oneshot "voice/1..40" every 1..3:
-        volume = 0.2..0.5
-        move = walk, -10..10, -10..10, 0.05..0.06
+    oneshot "voice/1to40" every 1to3:
+        volume = 0.2to0.5
+        move = walk, -10to10, -10to10, 0.05to0.06
+    oneshot "voice/1to40" every 1to3:
+        volume = 0.2to0.5
+        move = walk, -10to10, -10to10, 0.05to0.06
+    oneshot "voice/1to40" every 1to5:
+        volume = 0.2to0.5
+        move = walk, -10to10, -10to10, 0.05to0.06
+    oneshot "voice/1to40" every 1to3:
+        volume = 0.2to0.5
+        move = walk, -10to10, -10to10, 0.05to0.06
+    oneshot "voice/1to40" every 1to3:
+        volume = 0.2to0.5
+        move = walk, -10to10, -10to10, 0.05to0.06
 
 group loops:
-    loop "voice/1..40":
-        volume = 0.2..0.3
-        move = walk, -10..10, -10..10, 0.05..0.06
-        starts_at = 5..10
-        fade_in = 10..20
+    loop "voice/1to40":
+        volume = 0.2to0.3
+        move = walk, -10to10, -10to10, 0.05to0.06
+        starts_at = 5to10
+        fade_in = 10to20
         visualize = true
-    loop "voice/1..40":
-        volume = 0.2..0.3
-        move = walk, -20..20, -20..20, 0.05..0.06
-        starts_at = 5..10
-        fade_in = 10..20
+    loop "voice/1to40":
+        volume = 0.2to0.3
+        move = walk, -20to20, -20to20, 0.05to0.06
+        starts_at = 5to10
+        fade_in = 10to20
         visualize = true
-    loop "voice/1..40":
-        volume = 0.2..0.3
-        move = walk, -30..30, -30..30, 0.05..0.06
-        starts_at = 5..10
-        fade_in = 10..20
+    loop "voice/1to40":
+        volume = 0.2to0.3
+        move = walk, -30to30, -30to30, 0.05to0.06
+        starts_at = 5to10
+        fade_in = 10to20
         visualize = true
 
 

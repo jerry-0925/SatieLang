@@ -5,9 +5,9 @@ namespace Satie
 {
     internal static class SatieUtil
     {
-        // "birds/01..08"  → "birds/05" (random)
+        // "birds/01to08"  → "birds/05" (random)
         static readonly Regex clipRangeRx =
-            new(@"^(.*\/)?(\d+)\.\.(\d+)$",  // folders optional
+            new(@"^(.*\/)?(\d+)to(\d+)$",  // folders optional
                 RegexOptions.Compiled);
 
         public static string ResolveClip(string pattern)

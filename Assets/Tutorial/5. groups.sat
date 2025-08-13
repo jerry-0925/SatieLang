@@ -12,14 +12,14 @@ fade_in = 0.5 # multiplies the fade_in time of all child events (e.g., 0.5 halve
     loop "music/drone":
         volume = 0.02
         pitch = 2
-        fade_in = 30..40
+        fade_in = 30to40
 
-    oneshot "music/1..3" every 20..40:
+    oneshot "music/1to3" every 20to40:
         volume = 0.5
-        move = pos, -10..10, 0..10, -10..10
+        move = pos, -10to10, 0to10, -10to10
 
     loop "sacred/1":
         volume = 0.3
-        move = walk, -10..10, -10..10, 0.01
+        move = walk, -10to10, -10to10, 0.01
         visualize = true
         fade_in = 50

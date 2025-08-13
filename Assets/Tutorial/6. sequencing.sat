@@ -15,7 +15,7 @@ loop "music/drone":
     volume = 0.08
     pitch = 2              # two octaves up for tonal variation
     starts_at = 10         # starts 10 seconds into the group
-    fade_in = 30..40       # randomized fade-in duration
+    fade_in = 30to40       # randomized fade-in duration
     duration = 50          # removed after 50 seconds
 
 loop "music/drone":

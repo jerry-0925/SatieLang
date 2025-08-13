@@ -1,17 +1,17 @@
 group farm:
 volume = 2
 
-    oneshot "animals/cow1" every 5..20:
-        volume = 0.1..0.2
-        pitch = 0.5..1.2
-        fade_in = 5..10
-        move = fly, -40..20, 0..10, -35..10, 0.01
+    oneshot "animals/cow1" every 5to20:
+        volume = 0.1to0.2
+        pitch = 0.5to1.2
+        fade_in = 5to10
+        move = fly, -40to20, 0to10, -35to10, 0.01
         visualize = true
 
-    3 * oneshot "animals/cicada" every 5..10:
-        volume = 0.03..0.08
-        pitch = 0.5..1.2
-        fade_in = 5..10
+    3 * oneshot "animals/cicada" every 5to10:
+        volume = 0.03to0.08
+        pitch = 0.5to1.2
+        fade_in = 5to10
         visualize = true
 
 
@@ -20,5 +20,5 @@ volume = 2
 
     loop "tractor":
         volume = 0.05
-        move = walk, -10..9, -10..20, 0.005
+        move = walk, -10to9, -10to20, 0.005
         visualize = true
