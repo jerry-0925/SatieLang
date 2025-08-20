@@ -142,10 +142,65 @@ public class SatieRuntime : MonoBehaviour
             go.transform.position = p;
         }
 
-        if (s.visualize) AddTrail(go);
+        AddVisuals(go, s);
 
         StartCoroutine(Fade(src, 0f, s.volume.Sample(), s.fade_in.Sample()));
         return src;
+    }
+
+    void AddVisuals(GameObject go, Statement s)
+    {
+        foreach (string visual in s.visual)
+        {
+            if (visual.StartsWith("object:"))
+            {
+                // Load prefab from Resources
+                string prefabPath = visual.Substring(7); // Remove "object:" prefix
+                string fullPath = $"Prefabs/{SatieUtil.ResolveClip(prefabPath)}";
+                GameObject prefab = Resources.Load<GameObject>(fullPath);
+                
+                if (prefab != null)
+                {
+                    GameObject instance = Instantiate(prefab, go.transform);
+                    instance.transform.localPosition = Vector3.zero;
+                }
+                else
+                {
+                    Debug.LogWarning($"[Satie] Prefab '{fullPath}' not found in Resources.");
+                }
+            }
+            else
+            {
+                // Handle primitive visuals
+                switch (visual)
+                {
+                    case "trail":
+                        AddTrail(go);
+                        break;
+                    case "sphere":
+                        AddPrimitive(go, PrimitiveType.Sphere);
+                        break;
+                    case "cube":
+                        AddPrimitive(go, PrimitiveType.Cube);
+                        break;
+                    case "cylinder":
+                        AddPrimitive(go, PrimitiveType.Cylinder);
+                        break;
+                    case "capsule":
+                        AddPrimitive(go, PrimitiveType.Capsule);
+                        break;
+                    case "plane":
+                        AddPrimitive(go, PrimitiveType.Plane);
+                        break;
+                    case "quad":
+                        AddPrimitive(go, PrimitiveType.Quad);
+                        break;
+                    default:
+                        Debug.LogWarning($"[Satie] Unknown visual type: '{visual}'");
+                        break;
+                }
+            }
+        }
     }
 
     void AddTrail(GameObject go)
@@ -165,6 +220,26 @@ public class SatieRuntime : MonoBehaviour
             new[] { new GradientAlphaKey(1f, 0f),    new GradientAlphaKey(0f, 1f) }
         );
         tr.colorGradient = grad;
+    }
+
+    void AddPrimitive(GameObject go, PrimitiveType type)
+    {
+        GameObject primitive = GameObject.CreatePrimitive(type);
+        primitive.transform.SetParent(go.transform);
+        primitive.transform.localPosition = Vector3.zero;
+        primitive.transform.localScale = Vector3.one * 0.5f; // Scale down a bit
+        
+        // Remove collider as we don't need physics
+        Collider col = primitive.GetComponent<Collider>();
+        if (col) Destroy(col);
+        
+        // Add a random color to the material
+        Renderer rend = primitive.GetComponent<Renderer>();
+        if (rend)
+        {
+            rend.material = new Material(Shader.Find("Standard"));
+            rend.material.color = new Color(Random.value, Random.value, Random.value, 0.8f);
+        }
     }
 
     IEnumerator StopAfter(AudioSource src, float secs, float fadeOut)

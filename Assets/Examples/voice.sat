@@ -22,19 +22,19 @@ group loops:
         move = walk, -10to10, -10to10, 0.05to0.06
         starts_at = 5to10
         fade_in = 10to20
-        visualize = true
+        visual = trail
     loop "voice/1to40":
         volume = 0.2to0.3
         move = walk, -20to20, -20to20, 0.05to0.06
         starts_at = 5to10
         fade_in = 10to20
-        visualize = true
+        visual = trail
     loop "voice/1to40":
         volume = 0.2to0.3
         move = walk, -30to30, -30to30, 0.05to0.06
         starts_at = 5to10
         fade_in = 10to20
-        visualize = true
+        visual = trail
 
 
 

@@ -5,13 +5,13 @@
     pitch = 0.5to1.2
     fade_in = 5to10
     move = fly, -20to20, 0to10, -15to10, 0.01
-    visualize = true
+    visual = trail
 
 oneshot "animals/cicada" every 5to10:
     volume = 0.1to0.2
     pitch = 0.5to1.2
     fade_in = 5to10
-    visualize = true
+    visual = trail
 
 
 

@@ -31,13 +31,13 @@ fade_out = 15
         pitch = 0.6to1
         fade_in = 10to15
         move = fly, -10to10, 0to15, -10to10, 0.06
-        visualize = true
+        visual = trail
     oneshot "bird/1to4" every 4to7:
         volume = 0.2to0.3
         pitch = 0.6to1
         fade_in = 10to15
         move = fly, -10to10, 0to15, -10to10, 0.06
-        visualize = true
+        visual = trail
 
 group music:
 duration = 60
@@ -57,7 +57,7 @@ pitch = 0.5
     loop "sacred/1":
         volume = 0.3
         move = walk, -10to10, -10to10, 0.01
-        visualize = true
+        visual = trail
         fade_in = 50
 
     

@@ -21,5 +21,5 @@ fade_in = 0.5 # multiplies the fade_in time of all child events (e.g., 0.5 halve
     loop "sacred/1":
         volume = 0.3
         move = walk, -10to10, -10to10, 0.01
-        visualize = true
+        visual = trail
         fade_in = 50

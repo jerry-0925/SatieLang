@@ -6,13 +6,13 @@ volume = 2
         pitch = 0.5to1.2
         fade_in = 5to10
         move = fly, -40to20, 0to10, -35to10, 0.01
-        visualize = true
+        visual = trail
 
     3 * oneshot "animals/cicada" every 5to10:
         volume = 0.03to0.08
         pitch = 0.5to1.2
         fade_in = 5to10
-        visualize = true
+        visual = trail
 
 
     loop "ambience/forest":
@@ -21,4 +21,4 @@ volume = 2
     loop "tractor":
         volume = 0.05
         move = walk, -10to9, -10to20, 0.005
-        visualize = true
+        visual = trail

@@ -24,7 +24,7 @@ namespace Satie
         public Vector3 areaMin, areaMax;
         public RangeOrValue wanderHz = new(0.3f);
 
-        public bool visualize = false;
+        public List<string> visual = new();
     }
 
     public readonly struct RangeOrValue
@@ -141,7 +141,7 @@ namespace Satie
                 {
                     var m = PropRx.Match(body);
                     string k = m.Groups["key"].Value.ToLower();
-                    if (k is "move" or "visualize")
+                    if (k is "move" or "visual")
                         Debug.LogWarning($"[Satie] '{k}' not allowed on a group – ignored.");
                     else
                         grp.props[k] = m.Groups["val"].Value.Trim();
@@ -196,7 +196,7 @@ namespace Satie
                     case "fade_out": s.fade_out = RangeOrValue.Parse(v); break;
                     case "every": s.every = RangeOrValue.Parse(v); break;
                     case "overlap": s.overlap = v.ToLower().StartsWith("t"); break;
-                    case "visualize": s.visualize = v.ToLower().StartsWith("t"); break;
+                    case "visual": ParseVisual(s, v); break;
                     case "move": ParseMove(s,v); break;
                 }
             }
@@ -276,6 +276,40 @@ namespace Satie
                 s.areaMin=new Vector3(xmin,ymin,zmin); s.areaMax=new Vector3(xmax,ymax,zmax);
             }
             else Debug.LogError($"move: bad syntax '{v}'");
+        }
+
+        static void ParseVisual(Statement s, string v)
+        {
+            v = v.Trim();
+            if (string.IsNullOrWhiteSpace(v)) return;
+
+            // Split by "and" to support multiple visuals
+            string[] parts = v.Split(new[] { " and " }, System.StringSplitOptions.RemoveEmptyEntries);
+            
+            foreach (string part in parts)
+            {
+                string trimmed = part.Trim();
+                
+                // Check for object "path" syntax
+                if (trimmed.StartsWith("object ", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    // Extract the quoted path
+                    var match = Regex.Match(trimmed, @"object\s+""(.+?)""");
+                    if (match.Success)
+                    {
+                        s.visual.Add($"object:{match.Groups[1].Value}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[Satie] Invalid object syntax: '{trimmed}'");
+                    }
+                }
+                else
+                {
+                    // It's a primitive type (trail, sphere, cube, etc.)
+                    s.visual.Add(trimmed.ToLower());
+                }
+            }
         }
     }
 }

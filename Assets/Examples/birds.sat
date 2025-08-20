@@ -9,13 +9,13 @@ group birds:
         volume = 0.8to1
         fade_in = 1to5
         move = fly, -10to10, 0to15, -10to10, 0.1to0.3
-        visualize = true
+        visual = trail
         
     oneshot "bird/1to3" every 1to5:
         volume = 0.8to1
         fade_in = 1to5
         move = fly, -10to10, 0to15, -10to10, 0.1to0.3
-        visualize = true
+        visual = trail
 volume = 1
 pitch = 0.5
     
