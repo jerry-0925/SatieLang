@@ -7,7 +7,7 @@ volume = 1
         starts_at = 1to10
         fade_in = 5to30
         move = walk, -10to10, -10to10, 0.05to0.2
-        visualize = true
+        visual = trail
         overlap = true
     loop "music/beat":
         volume = 0.5
@@ -15,7 +15,7 @@ volume = 1
         starts_at = 1to10
         fade_in = 5to30
         move = walk, -10to10, -10to10, 0.05to0.2
-        visualize = true
+        visual = trail
         overlap = true
     loop "music/beat":
         volume = 0.5
@@ -24,7 +24,7 @@ volume = 1
         fade_in = 5to30
         overlap = true
         move = walk, -10to10, -10to10, 0.05to0.2
-        visualize = true
+        visual = trail
     loop "music/beat":
         volume = 0.5
         pitch = 1
@@ -32,7 +32,7 @@ volume = 1
         fade_in = 5to30
         overlap = true
         move = walk, -10to10, -10to10, 0.05to0.2
-        visualize = true
+        visual = trail
 
 group drone:
     loop "music/drone":
@@ -40,13 +40,13 @@ group drone:
             pitch = 1
             fade_in = 20to40
             move = walk, -10to10, -10to10, 0.01to0.02
-            visualize = true
+            visual = trail
     loop "music/drone":
             volume = 0.25
             pitch = 2
             fade_in = 40
             move = walk, -10to10, -10to10, 0.01to0.02
-            visualize = true
+            visual = trail
 
 
 

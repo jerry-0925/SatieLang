@@ -5,7 +5,10 @@
 # - walk: moves only along X and Z axes (Y is ignored)
 # - fly: moves in full 3D space (X, Y, Z)
 # The last value is always the speed (units per second)
-# 'visualize = true' adds a Trail Renderer to show movement over time
+# 'visual = trail' adds a Trail Renderer to show movement over time
+# You can use other primitives like 'visual = sphere' or 'visual = cube'
+# For custom prefabs: 'visual = object "prefabName"' (stored in Resources/Prefabs)
+# Multiple visuals: 'visual = trail and sphere'
 
 group birds:
 volume = 0.4
@@ -14,13 +17,13 @@ pitch = 0.35
         volume = 0.8to1
         fade_in = 1to5
         move = fly, -15to15, 0to15, -15to15, 0.1
-        visualize = true
+        visual = trail
 
     oneshot "bird/1to3" every 1to5:
         volume = 0.8to1
         fade_in = 1to5
         move = fly, -20to20, 0to15, -20to20, 0.03to0.1
-        visualize = true
+        visual = trail
 
 group conversation:
 volume = 0.8
@@ -29,7 +32,7 @@ volume = 0.8
         pitch = 0.1to1.5
         fade_in = 1to5
         move = walk, -5to5, -5to5, 0.08
-        visualize = true
+        visual = trail
 
 group forest:
 volume = 0.2

@@ -1,0 +1,20 @@
+group beat:
+pitch = 2
+volume = 1
+    loop "music/beat":
+        volume = 0.5
+        pitch = 0.1
+        fade_in = 5to30
+        move = walk, -10to10, -10to10, 0.01to0.03
+        visual = sphere and trail
+    loop "music/beat":
+        volume = 0.5
+        pitch = 0.2
+        fade_in = 5to30
+        move = walk, -10to10, -10to10, 0.05
+        visual = trail and cylinder
+
+
+
+
+
