@@ -1,18 +1,12 @@
 group beat:
-pitch = 2
-volume = 1
-    loop "music/beat":
-        volume = 0.5
-        pitch = 0.1
-        fade_in = 5to30
-        move = walk, -10to10, -10to10, 0.01to0.03
+pitch = 1
+volume = 0.2
+    5 * loop "bird/1to4":
+        volume = 0.01to0.2
+        pitch = 0.3to1.2
         visual = sphere and trail
-    loop "music/beat":
-        volume = 0.5
-        pitch = 0.2
-        fade_in = 5to30
-        move = walk, -10to10, -10to10, 0.05
-        visual = trail and cylinder
+        move = fly, -10to15, 0to8, -5to5, 0.01to0.05
+        
 
 
 

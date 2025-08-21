@@ -338,6 +338,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   scriptFile: {fileID: 2811297602134710623, guid: d46ee3d93ead74ff18e3f7ab50df38e6, type: 3}
+  useHRTF: 1
 --- !u!4 &1228820744
 Transform:
   m_ObjectHideFlags: 0
