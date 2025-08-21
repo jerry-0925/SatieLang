@@ -2,11 +2,18 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Satie;
+#if STEAMAUDIO_ENABLED
+using SteamAudio;
+#endif
 
 public class SatieRuntime : MonoBehaviour
 {
     [Tooltip(".sp script (TextAsset)")]
     [SerializeField] private TextAsset scriptFile;
+    
+    [Header("Spatial Audio")]
+    [Tooltip("Enable Steam Audio HRTF if available")]
+    [SerializeField] private bool useHRTF = true;
 
     private readonly List<AudioSource> spawned  = new();
     private readonly List<Coroutine>   schedulers = new();
@@ -18,6 +25,13 @@ public class SatieRuntime : MonoBehaviour
             Debug.LogError("SonicPrompterRuntime: TextAsset missing.");
             return;
         }
+        
+        // Auto-setup Steam Audio if enabled and missing
+        if (useHRTF)
+        {
+            SetupSteamAudio();
+        }
+        
         Sync(fullReset: true);
     }
 
@@ -122,6 +136,21 @@ public class SatieRuntime : MonoBehaviour
         src.volume = 0f;
         src.pitch = s.pitch.Sample();
         src.spatialBlend = (s.wanderType == Statement.WanderType.None) ? 0f : 1f;
+        
+        // Enable spatializer plugin if this is a 3D source
+        if (s.wanderType != Statement.WanderType.None)
+        {
+            src.spatialize = true;  // This enables the spatializer plugin (Steam Audio if configured)
+            src.spatializePostEffects = true;  // Apply spatialization after effects
+            
+            // Set 3D sound settings for better spatialization
+            src.dopplerLevel = 0.5f;
+            src.spread = 0f;  // 0 = point source, better for HRTF
+            src.rolloffMode = AudioRolloffMode.Logarithmic;
+            src.minDistance = 1f;
+            src.maxDistance = 100f;
+        }
+        
         src.Play();
 
         if (s.wanderType == Statement.WanderType.Walk ||
@@ -135,7 +164,7 @@ public class SatieRuntime : MonoBehaviour
         }
         else if (s.wanderType == Statement.WanderType.Fixed)
         {
-            Vector3 p = new Vector3(
+            UnityEngine.Vector3 p = new UnityEngine.Vector3(
                 Random.Range(s.areaMin.x, s.areaMax.x),
                 Random.Range(s.areaMin.y, s.areaMax.y),
                 Random.Range(s.areaMin.z, s.areaMax.z));
@@ -143,6 +172,12 @@ public class SatieRuntime : MonoBehaviour
         }
 
         AddVisuals(go, s);
+        
+        // Add Steam Audio HRTF support if available and source is spatialized
+        if (useHRTF && s.wanderType != Statement.WanderType.None)
+        {
+            AddSteamAudioHRTF(go);
+        }
 
         StartCoroutine(Fade(src, 0f, s.volume.Sample(), s.fade_in.Sample()));
         return src;
@@ -162,7 +197,7 @@ public class SatieRuntime : MonoBehaviour
                 if (prefab != null)
                 {
                     GameObject instance = Instantiate(prefab, go.transform);
-                    instance.transform.localPosition = Vector3.zero;
+                    instance.transform.localPosition = UnityEngine.Vector3.zero;
                 }
                 else
                 {
@@ -208,7 +243,7 @@ public class SatieRuntime : MonoBehaviour
         var tr = go.AddComponent<TrailRenderer>();
         tr.widthMultiplier = 0.1f;
         tr.time = 5f;
-        tr.material = new Material(Shader.Find("Sprites/Default"));
+        tr.material = new UnityEngine.Material(Shader.Find("Sprites/Default"));
         tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
         Color start = new Color(Random.value, Random.value, Random.value, 1f);
@@ -226,8 +261,8 @@ public class SatieRuntime : MonoBehaviour
     {
         GameObject primitive = GameObject.CreatePrimitive(type);
         primitive.transform.SetParent(go.transform);
-        primitive.transform.localPosition = Vector3.zero;
-        primitive.transform.localScale = Vector3.one * 0.5f; // Scale down a bit
+        primitive.transform.localPosition = UnityEngine.Vector3.zero;
+        primitive.transform.localScale = UnityEngine.Vector3.one * 0.5f; // Scale down a bit
         
         // Remove collider as we don't need physics
         Collider col = primitive.GetComponent<Collider>();
@@ -237,9 +272,109 @@ public class SatieRuntime : MonoBehaviour
         Renderer rend = primitive.GetComponent<Renderer>();
         if (rend)
         {
-            rend.material = new Material(Shader.Find("Standard"));
+            rend.material = new UnityEngine.Material(Shader.Find("Standard"));
             rend.material.color = new Color(Random.value, Random.value, Random.value, 0.8f);
         }
+    }
+    
+    void SetupSteamAudio()
+    {
+#if STEAMAUDIO_ENABLED
+        // Check if Steam Audio Manager exists, create if missing
+        var manager = FindObjectOfType<SteamAudioManager>();
+        if (manager == null)
+        {
+            Debug.Log("[Satie] Creating Steam Audio Manager for HRTF support.");
+            var managerGO = new GameObject("Steam Audio Manager");
+            manager = managerGO.AddComponent<SteamAudioManager>();
+        }
+        
+        // Check if main camera has Steam Audio Listener
+        var mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            var steamListener = mainCamera.GetComponent<SteamAudioListener>();
+            var audioListener = mainCamera.GetComponent<AudioListener>();
+            
+            // Ensure Unity's AudioListener exists (required by Steam Audio)
+            if (audioListener == null)
+            {
+                Debug.Log("[Satie] Adding Unity AudioListener to Main Camera (required by Steam Audio).");
+                audioListener = mainCamera.gameObject.AddComponent<AudioListener>();
+            }
+            
+            // Add Steam Audio Listener component if missing
+            if (steamListener == null)
+            {
+                Debug.Log("[Satie] Adding Steam Audio Listener to Main Camera for HRTF support.");
+                steamListener = mainCamera.gameObject.AddComponent<SteamAudioListener>();
+                
+                // Configure Steam Audio Listener for baked reverb if needed
+                steamListener.applyReverb = false; // Start with reverb disabled for performance
+                steamListener.reverbType = ReverbType.Realtime;
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[Satie] No Main Camera found. Please ensure a camera with AudioListener exists in the scene.");
+        }
+#else
+        Debug.Log("[Satie] Steam Audio not enabled. Using Unity's default spatializer.");
+#endif
+    }
+    
+    void AddSteamAudioHRTF(GameObject go)
+    {
+#if STEAMAUDIO_ENABLED
+        // Steam Audio Manager should exist by now (created in SetupSteamAudio)
+        var manager = FindObjectOfType<SteamAudioManager>();
+        if (manager == null)
+        {
+            Debug.LogWarning("[Satie] Steam Audio Manager still not found. Basic spatialization will be used.");
+            return;
+        }
+        
+        try
+        {
+            // The Steam Audio Source component provides additional features beyond basic HRTF
+            // HRTF is actually handled by the spatializer plugin via AudioSource.spatialize = true
+            var steamSource = go.AddComponent<SteamAudioSource>();
+            
+            // Configure for best spatial quality
+            steamSource.directivity = false;          // Omnidirectional by default
+            steamSource.dipoleWeight = 0.0f;          // No dipole pattern  
+            steamSource.dipolePower = 1.0f;
+            
+            // Advanced features (optional, can impact performance)
+            steamSource.occlusion = false;            // Start with occlusion off for performance
+            steamSource.occlusionType = OcclusionType.Raycast;
+            steamSource.occlusionRadius = 0.1f;
+            
+            steamSource.transmission = false;         // Start with transmission off
+            steamSource.transmissionType = TransmissionType.FrequencyDependent;
+            
+            steamSource.reflections = false;          // Start with reflections off
+            steamSource.reflectionsType = ReflectionsType.Realtime;
+            
+            // Note: The actual HRTF processing happens through Unity's spatializer system
+            // when AudioSource.spatialize = true and Steam Audio Spatializer is selected
+            // in Project Settings. The SteamAudioSource component adds extra features.
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[Satie] Failed to add Steam Audio Source component: {e.Message}. Using basic spatialization.");
+        }
+#else
+        // Steam Audio not available - Unity will use its default spatializer
+        // The AudioSource.spatialize flag will still work with Unity's built-in spatializer
+        if (Application.isPlaying && useHRTF)
+        {
+            Debug.Log("[Satie] Using Unity's default spatializer. For HRTF support:" +
+                     "\n1. Steam Audio package is already in manifest.json" +
+                     "\n2. Add STEAMAUDIO_ENABLED to Scripting Define Symbols" +
+                     "\n3. Set Project Settings > Audio > Spatializer Plugin to 'Steam Audio Spatializer'");
+        }
+#endif
     }
 
     IEnumerator StopAfter(AudioSource src, float secs, float fadeOut)
