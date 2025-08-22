@@ -162,6 +162,15 @@ public class SatieRuntimeEditor : Editor
             }
         }
         
+        // Resource cache controls
+        EditorGUILayout.Space(5);
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("Refresh Audio Cache", GUILayout.Height(20)))
+        {
+            SatieAICodeGen.Instance.InvalidateResourceCache();
+        }
+        EditorGUILayout.EndHorizontal();
+        
         if (!File.Exists(Path.Combine(Application.dataPath, "api_key.txt")))
         {
             EditorGUILayout.Space(5);
@@ -218,16 +227,8 @@ public class SatieRuntimeEditor : Editor
         {
             var generator = SatieAICodeGen.Instance;
             
-            // Try resource-aware generation first, fallback to regular generation
-            try
-            {
-                generatedCode = await generator.GenerateWithResourceAwareness(aiPrompt);
-            }
-            catch (System.Exception resourceEx)
-            {
-                Debug.LogWarning($"Resource-aware generation failed, falling back to regular generation: {resourceEx.Message}");
-                generatedCode = await generator.GenerateSatieCode(aiPrompt);
-            }
+            // Use resource-aware generation
+            generatedCode = await generator.GenerateWithResourceAwareness(aiPrompt);
             
             lastPrompt = aiPrompt;
             lastGeneratedCode = generatedCode;
