@@ -60,6 +60,9 @@ namespace Satie
         [SerializeField] public SatieAIConfig config = new SatieAIConfig();
         private string apiKey;
         private HttpClient httpClient;
+        private string cachedResourceInfo;
+        private float lastResourceScanTime = -1f;
+        private const float RESOURCE_CACHE_DURATION = 300f; // 5 minutes
 
         private const string SYSTEM_PROMPT = "Output ONLY valid Satie code. Never add markdown code blocks or explanatory text.\n\n" +
             "CRITICAL SYNTAX RULES:\n" +
@@ -131,7 +134,12 @@ namespace Satie
             }
             instance = this;
             DontDestroyOnLoad(gameObject);
+            
+            // Configure HttpClient for performance
             httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(120); // Increased for AI requests
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "SatieLang/1.0");
+            httpClient.DefaultRequestHeaders.Add("Connection", "keep-alive");
             
             // Force update model to GPT-5 if it's still using old models
             if (config.model != "gpt-5")
@@ -140,6 +148,9 @@ namespace Satie
                 config.model = "gpt-5";
                 Debug.Log($"Updated AI model from {oldModel} to gpt-5");
             }
+            
+            // Pre-cache resource info
+            _ = RefreshResourceCache();
         }
 
         void OnDestroy()
@@ -158,8 +169,11 @@ namespace Satie
             {
                 Debug.Log("[AI Test] Testing API connection with models endpoint...");
                 
-                httpClient.DefaultRequestHeaders.Clear();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                // Only update authorization header if needed
+                if (!httpClient.DefaultRequestHeaders.Contains("Authorization"))
+                {
+                    httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                }
                 
                 // First test: List available models
                 var modelsResponse = await httpClient.GetAsync("https://api.openai.com/v1/models");
@@ -235,8 +249,11 @@ namespace Satie
 
                 var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
-                httpClient.DefaultRequestHeaders.Clear();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                // Only update authorization header if needed
+                if (!httpClient.DefaultRequestHeaders.Contains("Authorization"))
+                {
+                    httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                }
                 
                 Debug.Log($"[AI Debug] Sending request...");
                 var response = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
@@ -337,8 +354,8 @@ namespace Satie
 
         public async Task<string> GenerateWithResourceAwareness(string prompt)
         {
-            // Scan available resources dynamically
-            string resourceInfo = await ScanAvailableResources();
+            // Use cached resource info or scan if needed
+            string resourceInfo = await GetCachedResourceInfo();
             
             // Enhanced system prompt with current resource info
             string enhancedSystemPrompt = SYSTEM_PROMPT.Replace(
@@ -431,49 +448,128 @@ namespace Satie
                 return "# Error: API key not found. Please create Assets/api_key.txt with your OpenAI API key.";
             }
 
-            try
+            const int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                string systemPromptEscaped = EscapeJsonString(systemPrompt);
-                string userPromptEscaped = EscapeJsonString(prompt);
-                
-                string jsonBody = $@"{{
-                    ""model"": ""{config.model}"",
-                    ""messages"": [
-                        {{""role"": ""system"", ""content"": ""{systemPromptEscaped}""}},
-                        {{""role"": ""user"", ""content"": ""{userPromptEscaped}""}}
-                    ],
-                    ""temperature"": {config.temperature},
-                    ""max_completion_tokens"": {config.maxTokens}
-                }}";
-
-                var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-                httpClient.DefaultRequestHeaders.Clear();
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-                
-                var response = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
-                var responseText = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
+                try
                 {
-                    Debug.LogError($"OpenAI API Error: {response.StatusCode} - {responseText}");
-                    return $"# Error: API request failed - {response.StatusCode}\n# Details: {responseText}";
-                }
+                    Debug.Log($"[AI Request] Attempt {attempt}/{maxRetries} - Starting generation...");
+                    
+                    string systemPromptEscaped = EscapeJsonString(systemPrompt);
+                    string userPromptEscaped = EscapeJsonString(prompt);
+                    
+                    string jsonBody = $@"{{
+                        ""model"": ""{config.model}"",
+                        ""messages"": [
+                            {{""role"": ""system"", ""content"": ""{systemPromptEscaped}""}},
+                            {{""role"": ""user"", ""content"": ""{userPromptEscaped}""}}
+                        ],
+                        ""temperature"": {config.temperature},
+                        ""max_completion_tokens"": {config.maxTokens}
+                    }}";
 
-                var contentMatch = Regex.Match(responseText, @"""content""\s*:\s*""((?:[^""\\]|\\.)*)""\s*");
-                if (contentMatch.Success)
+                    var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+                    // Only update authorization header if needed
+                    if (!httpClient.DefaultRequestHeaders.Contains("Authorization"))
+                    {
+                        httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                    }
+                    
+                    Debug.Log($"[AI Request] Sending request to OpenAI...");
+                    var response = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+                    var responseText = await response.Content.ReadAsStringAsync();
+                    
+                    Debug.Log($"[AI Request] Response status: {response.StatusCode}");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Debug.LogError($"OpenAI API Error (attempt {attempt}): {response.StatusCode} - {responseText}");
+                        
+                        // Don't retry on client errors (4xx), only on server errors or timeouts
+                        if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500)
+                        {
+                            return $"# Error: API request failed - {response.StatusCode}\n# Details: {responseText}";
+                        }
+                        
+                        if (attempt == maxRetries)
+                        {
+                            return $"# Error: API request failed after {maxRetries} attempts - {response.StatusCode}\n# Details: {responseText}";
+                        }
+                        
+                        await Task.Delay(1000 * attempt); // Progressive backoff
+                        continue;
+                    }
+
+                    // Log the first part of response to debug parsing issues
+                    Debug.Log($"[AI Debug] Response preview: {responseText.Substring(0, Math.Min(500, responseText.Length))}...");
+                    
+                    var contentMatch = Regex.Match(responseText, @"""content""\s*:\s*""((?:[^""\\]|\\.)*)""");
+                    if (contentMatch.Success)
+                    {
+                        string extractedContent = contentMatch.Groups[1].Value;
+                        extractedContent = Regex.Unescape(extractedContent);
+                        Debug.Log($"[AI Request] Success! Generated {extractedContent.Length} characters");
+                        if (extractedContent.Length > 0)
+                        {
+                            Debug.Log($"[AI Debug] Content preview: {extractedContent.Substring(0, Math.Min(200, extractedContent.Length))}...");
+                        }
+                        return extractedContent;
+                    }
+                    else
+                    {
+                        // Try alternative parsing methods
+                        Debug.LogWarning($"[AI Debug] Primary regex failed, trying alternatives...");
+                        
+                        // Try simpler content extraction
+                        var simpleMatch = Regex.Match(responseText, @"""content"":\s*""([^""]+)""");
+                        if (simpleMatch.Success)
+                        {
+                            string alternativeContent = simpleMatch.Groups[1].Value;
+                            alternativeContent = Regex.Unescape(alternativeContent);
+                            Debug.Log($"[AI Request] Alternative parsing successful! Generated {alternativeContent.Length} characters");
+                            return alternativeContent;
+                        }
+                        
+                        // Log full response if parsing completely fails
+                        Debug.LogError($"[AI Debug] Content parsing failed completely. Full response: {responseText}");
+                    }
+
+                    Debug.LogWarning($"[AI Request] No content found in response (attempt {attempt})");
+                    if (attempt == maxRetries)
+                    {
+                        return "# Error: No response from AI";
+                    }
+                }
+                catch (TaskCanceledException e) when (e.InnerException is TimeoutException || e.CancellationToken.IsCancellationRequested)
                 {
-                    string extractedContent = contentMatch.Groups[1].Value;
-                    extractedContent = Regex.Unescape(extractedContent);
-                    return extractedContent;
+                    Debug.LogWarning($"[AI Request] Timeout on attempt {attempt}/{maxRetries}");
+                    if (attempt == maxRetries)
+                    {
+                        return "# Error: Request timed out after multiple attempts. Try a shorter prompt or check your internet connection.";
+                    }
+                    await Task.Delay(2000 * attempt); // Longer delay for timeouts
                 }
-
-                return "# Error: No response from AI";
+                catch (HttpRequestException e)
+                {
+                    Debug.LogWarning($"[AI Request] Network error on attempt {attempt}/{maxRetries}: {e.Message}");
+                    if (attempt == maxRetries)
+                    {
+                        return $"# Error: Network error after {maxRetries} attempts: {e.Message}";
+                    }
+                    await Task.Delay(1000 * attempt);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[AI Request] Unexpected error on attempt {attempt}/{maxRetries}: {e.Message}");
+                    if (attempt == maxRetries)
+                    {
+                        return $"# Error: {e.Message}";
+                    }
+                    await Task.Delay(1000 * attempt);
+                }
             }
-            catch (Exception e)
-            {
-                Debug.LogError($"AI Generation Error: {e.Message}");
-                return $"# Error: {e.Message}";
-            }
+            
+            return "# Error: All retry attempts failed";
         }
 
         private string EscapeJsonString(string str)
@@ -534,6 +630,42 @@ namespace Satie
                 Debug.LogError($"[AI Debug] Failed to read API key: {e.Message}");
                 return false;
             }
+        }
+        
+        private async Task<string> GetCachedResourceInfo()
+        {
+            float currentTime = Time.realtimeSinceStartup;
+            
+            // Check if we need to refresh cache
+            if (string.IsNullOrEmpty(cachedResourceInfo) || 
+                currentTime - lastResourceScanTime > RESOURCE_CACHE_DURATION)
+            {
+                await RefreshResourceCache();
+            }
+            
+            return cachedResourceInfo ?? "No audio resources found";
+        }
+        
+        private async Task RefreshResourceCache()
+        {
+            try
+            {
+                cachedResourceInfo = await ScanAvailableResources();
+                lastResourceScanTime = Time.realtimeSinceStartup;
+                Debug.Log($"[AI Cache] Resource cache refreshed with {cachedResourceInfo.Split('\n').Length} entries");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[AI Cache] Failed to refresh resource cache: {e.Message}");
+                // Keep using old cache if available
+            }
+        }
+        
+        public void InvalidateResourceCache()
+        {
+            cachedResourceInfo = null;
+            lastResourceScanTime = -1f;
+            Debug.Log("[AI Cache] Resource cache invalidated");
         }
 
     }

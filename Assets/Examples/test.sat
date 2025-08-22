@@ -1,17 +1,22 @@
-loop "ambience/rain":
-    volume = 0.12to0.2
-    fade_in = 3
-    move = pos, 0, 0, 0
-    visual = sphere
-
-2 * oneshot "bird/1to7" every 3to16:
-    volume = 0.08to0.18
-    pitch = 0.9to1.2
-    move = fly, -15to15, 2to12, -15to15, 0.6to1.6
-    visual = sphere
-
-loop "music/beat":
+loop "ambience/forest":
     volume = 0.1to0.2
     fade_in = 4
-    move = pos, 0, 1.8, 0
+loop "music/drone":
+    volume = 0.2to0.35
+    fade_in = 10
+
+oneshot "music/1to3" every 5to10:
+    volume = 0.08to0.18
+    fade_in = 6
+
+7 * oneshot "bird/1to7" every 4to8:
+    volume = 0.05to0.1
+    pitch = 0.9to1.2
+    move = fly, -18to18, 2to12, -18to18, 0.6to1.4
     visual = sphere and trail
+
+5 * oneshot "bird/1to7" every 8to14:
+    volume = 0.03to0.08
+    pitch = 0.85to1.15
+    move = fly, -25to25, 8to20, -25to25, 0.4to1.0
+    visual = sphere
