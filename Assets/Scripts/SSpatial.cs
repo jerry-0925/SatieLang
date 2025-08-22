@@ -6,8 +6,7 @@ namespace Satie
     {
         public Statement.WanderType type = Statement.WanderType.None;
         public Vector3 minPos, maxPos;
-        public float   hz = 0.3f; // cycles / sec
-
+        public float hz = 0.3f; 
         private Vector3 seed;
 
         void Start()
@@ -22,7 +21,8 @@ namespace Satie
         {
             if (type == Statement.WanderType.None) return;
 
-            float t = Time.time * hz * 2f * Mathf.PI;
+            float scaledHz = hz * 0.01f;
+            float t = Time.time * scaledHz * 2f * Mathf.PI;
 
             Vector3 noise = new Vector3(
                 Mathf.PerlinNoise(seed.x, t)       - 0.5f,

@@ -14,6 +14,9 @@ public class SatieRuntimeEditor : Editor
     private bool isGenerating = false;
     private string generatedCode = "";
     private bool showGeneratedCode = false;
+    private bool showRLHFFeedback = false;
+    private string lastPrompt = "";
+    private string lastGeneratedCode = "";
     
     private GUIStyle promptStyle;
     private GUIStyle generatedCodeStyle;
@@ -131,6 +134,32 @@ public class SatieRuntimeEditor : Editor
             GUI.backgroundColor = bgColor;
             
             EditorGUILayout.EndHorizontal();
+            
+            // RLHF Feedback Section
+            if (SatieAICodeGen.Instance.config.enableRLHF)
+            {
+                EditorGUILayout.Space(10);
+                EditorGUILayout.LabelField("Code Quality Feedback (RLHF):", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("Was this generated code helpful and correct?", EditorStyles.miniLabel);
+                
+                EditorGUILayout.BeginHorizontal();
+                
+                GUI.backgroundColor = new Color(0.3f, 0.8f, 0.3f);
+                if (GUILayout.Button("✓ Correct", GUILayout.Height(25)))
+                {
+                    RecordRLHFFeedback(true);
+                }
+                
+                GUI.backgroundColor = new Color(0.8f, 0.3f, 0.3f);
+                if (GUILayout.Button("✗ Incorrect", GUILayout.Height(25)))
+                {
+                    RecordRLHFFeedback(false);
+                }
+                
+                GUI.backgroundColor = bgColor;
+                
+                EditorGUILayout.EndHorizontal();
+            }
         }
         
         if (!File.Exists(Path.Combine(Application.dataPath, "api_key.txt")))
@@ -188,8 +217,22 @@ public class SatieRuntimeEditor : Editor
         try
         {
             var generator = SatieAICodeGen.Instance;
-            generatedCode = await generator.GenerateSatieCode(aiPrompt);
+            
+            // Try resource-aware generation first, fallback to regular generation
+            try
+            {
+                generatedCode = await generator.GenerateWithResourceAwareness(aiPrompt);
+            }
+            catch (System.Exception resourceEx)
+            {
+                Debug.LogWarning($"Resource-aware generation failed, falling back to regular generation: {resourceEx.Message}");
+                generatedCode = await generator.GenerateSatieCode(aiPrompt);
+            }
+            
+            lastPrompt = aiPrompt;
+            lastGeneratedCode = generatedCode;
             showGeneratedCode = true;
+            showRLHFFeedback = true;
         }
         catch (System.Exception e)
         {
@@ -297,6 +340,33 @@ public class SatieRuntimeEditor : Editor
         {
             Debug.LogError($"[AI Test] Test failed with exception: {e}");
             EditorUtility.DisplayDialog("API Test Failed", $"Exception: {e.Message}", "OK");
+        }
+    }
+    
+    private void RecordRLHFFeedback(bool wasCorrect)
+    {
+        if (string.IsNullOrEmpty(lastPrompt) || string.IsNullOrEmpty(lastGeneratedCode))
+        {
+            Debug.LogWarning("No recent generation to provide feedback on.");
+            return;
+        }
+        
+        try
+        {
+            var generator = SatieAICodeGen.Instance;
+            generator.RecordRLHFFeedback(lastPrompt, lastGeneratedCode, wasCorrect);
+            
+            string feedbackMessage = wasCorrect ? 
+                "Thank you! This feedback helps improve future code generation." : 
+                "Thank you for the feedback. This will help improve future generations.";
+                
+            EditorUtility.DisplayDialog("Feedback Recorded", feedbackMessage, "OK");
+            showRLHFFeedback = false;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to record RLHF feedback: {e.Message}");
+            EditorUtility.DisplayDialog("Feedback Error", $"Failed to record feedback: {e.Message}", "OK");
         }
     }
 }
