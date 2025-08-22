@@ -1,9 +1,5 @@
-loop "ambience/forest":
-    volume = 0.3
-    fade_in = 2
-
-4 * loop "bird/1to7":
-    volume = 0.1to0.25
-    pitch = 0.9to1.2
-    move = fly, -12to12, -10to10, 0.4to1.5
-    visual = sphere
+5 * oneshot "bicycle/1to37" every 2to3:
+    volume = 0.1to0.9
+    pitch = 0.8to1.3
+    move = fly, -20to20, -20to20, -20to20, 0.01to0.12
+    visual = object "test" and trail

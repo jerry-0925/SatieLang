@@ -177,6 +177,7 @@ public class SatieRuntime : MonoBehaviour
         // Add Steam Audio HRTF support if available and source is spatialized
         if (useHRTF && s.wanderType != Statement.WanderType.None)
         {
+            src.spatialize = true;  // Enable Unity's spatializer plugin (required for HRTF)
             AddSteamAudioHRTF(go);
         }
 
