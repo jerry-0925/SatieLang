@@ -479,17 +479,37 @@ namespace Satie
                     // Log the first part of response to debug parsing issues
                     Debug.Log($"[AI Debug] Response preview: {responseText.Substring(0, Math.Min(500, responseText.Length))}...");
                     
+                    // Check if response indicates token limit issue
+                    bool isLengthLimit = responseText.Contains("\"finish_reason\":\"length\"") || responseText.Contains("\"finish_reason\": \"length\"");
+                    if (isLengthLimit)
+                    {
+                        Debug.LogWarning($"[AI Request] Response hit token limit (attempt {attempt})");
+                        
+                        // On first attempt with length limit, retry immediately
+                        if (attempt < maxRetries)
+                        {
+                            await Task.Delay(500); // Short delay before retry
+                            continue;
+                        }
+                    }
+                    
                     var contentMatch = Regex.Match(responseText, @"""content""\s*:\s*""((?:[^""\\]|\\.)*)""");
                     if (contentMatch.Success)
                     {
                         string extractedContent = contentMatch.Groups[1].Value;
                         extractedContent = Regex.Unescape(extractedContent);
-                        Debug.Log($"[AI Request] Success! Generated {extractedContent.Length} characters");
+                        
+                        // Only return if we actually have content, otherwise retry
                         if (extractedContent.Length > 0)
                         {
+                            Debug.Log($"[AI Request] Success! Generated {extractedContent.Length} characters");
                             Debug.Log($"[AI Debug] Content preview: {extractedContent.Substring(0, Math.Min(200, extractedContent.Length))}...");
+                            return extractedContent;
                         }
-                        return extractedContent;
+                        else
+                        {
+                            Debug.LogWarning($"[AI Request] Empty content received (attempt {attempt}), retrying...");
+                        }
                     }
                     else
                     {
@@ -502,8 +522,17 @@ namespace Satie
                         {
                             string alternativeContent = simpleMatch.Groups[1].Value;
                             alternativeContent = Regex.Unescape(alternativeContent);
-                            Debug.Log($"[AI Request] Alternative parsing successful! Generated {alternativeContent.Length} characters");
-                            return alternativeContent;
+                            
+                            // Only return if we actually have content
+                            if (alternativeContent.Length > 0)
+                            {
+                                Debug.Log($"[AI Request] Alternative parsing successful! Generated {alternativeContent.Length} characters");
+                                return alternativeContent;
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"[AI Request] Alternative parsing found empty content (attempt {attempt}), retrying...");
+                            }
                         }
                         
                         // Log full response if parsing completely fails
@@ -863,13 +892,36 @@ namespace Satie
                         continue;
                     }
 
+                    // Check if response indicates token limit issue
+                    bool isLengthLimit = responseText.Contains("\"finish_reason\":\"length\"") || responseText.Contains("\"finish_reason\": \"length\"");
+                    if (isLengthLimit)
+                    {
+                        Debug.LogWarning($"[AI Edit] Response hit token limit (attempt {attempt})");
+                        
+                        // On first attempt with length limit, retry immediately
+                        if (attempt < maxRetries)
+                        {
+                            await Task.Delay(500); // Short delay before retry
+                            continue;
+                        }
+                    }
+
                     var contentMatch = Regex.Match(responseText, @"""content""\s*:\s*""((?:[^""\\]|\\.)*)""");
                     if (contentMatch.Success)
                     {
                         string extractedContent = contentMatch.Groups[1].Value;
                         extractedContent = Regex.Unescape(extractedContent);
-                        Debug.Log($"[AI Edit] Success! Generated {extractedContent.Length} characters");
-                        return extractedContent;
+                        
+                        // Only return if we actually have content, otherwise retry
+                        if (extractedContent.Length > 0)
+                        {
+                            Debug.Log($"[AI Edit] Success! Generated {extractedContent.Length} characters");
+                            return extractedContent;
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[AI Edit] Empty content received (attempt {attempt}), retrying...");
+                        }
                     }
 
                     Debug.LogWarning($"[AI Edit] No content found in response (attempt {attempt})");
