@@ -18,7 +18,7 @@ namespace Satie
         public string apiKeyPath = "api_key.txt";
         public string model = "gpt-5"; // Options: gpt-5, gpt-4-turbo-preview, gpt-4, gpt-3.5-turbo
         public float temperature = 1.0f;
-        public int maxTokens = 3000;
+        public int maxTokens = 4000;
         [Header("RLHF Settings")]
         public bool enableRLHF = true;
         public string rlhfDataPath = "rlhf_feedback.json";
@@ -38,6 +38,21 @@ namespace Satie
     public class RLHFFeedbackWrapper
     {
         public RLHFFeedback[] items;
+    }
+
+    [System.Serializable]
+    public class ConversationMessage
+    {
+        public string role; // "user" or "assistant"
+        public string content;
+        public string timestamp;
+    }
+
+    [System.Serializable]
+    public class ConversationHistory
+    {
+        public ConversationMessage[] messages;
+        public string currentScript;
     }
 
     public class SatieAICodeGen : MonoBehaviour
@@ -63,67 +78,28 @@ namespace Satie
         private string cachedResourceInfo;
         private float lastResourceScanTime = -1f;
         private const float RESOURCE_CACHE_DURATION = 300f; // 5 minutes
+        
+        // Conversation context for follow-up editing
+        private ConversationHistory currentConversation;
+        private bool isEditMode = false;
 
-        private const string SYSTEM_PROMPT = "Output ONLY valid Satie code. Never add markdown code blocks or explanatory text.\n\n" +
-            "CRITICAL SYNTAX RULES:\n" +
-            "- ALWAYS add colon after statements: loop \"clip\": or oneshot \"clip\":\n" +
-            "- NEVER use 'overlap' with multiplied oneshots (5 * oneshot)\n" +
-            "- Move parameters for walk/fly: x, z, speed (NOT separate min/max for each axis)\n" +
-            "- NO 'drive' move type - only walk, fly, or fixed\n" +
-            "- Check available audio files before using them\n" +
-            "- AUDIO TYPE RULES:\n" +
-            "  - Birds: ALWAYS oneshot with \"every\" (birds chirp discretely)\n" +
-            "  - Footsteps: ALWAYS oneshot with \"every\" (discrete steps)\n" +
-            "  - Bicycles: ALWAYS oneshot with \"every\" (discrete sounds)\n" +
-            "  - Ambience: ALWAYS loop (continuous background)\n" +
-            "  - Music: ALWAYS loop (continuous playback)\n\n" +
-            "SATIE SYNTAX:\n\n" +
-            "Statements (MUST have colon):\n" +
-            "loop \"audio/clip\":\n" +
-            "oneshot \"audio/clip\":\n" +
-            "oneshot \"audio/clip\" every 3to5:\n" +
-            "5 * loop \"clip\":\n" +
-            "5 * oneshot \"clip\" every 3to5:\n\n" +
-            "Properties (indent under statements):\n" +
-            "volume = 0.5 or volume = 0.1to0.8\n" +
-            "pitch = 1.0 or pitch = 0.8to1.2\n" +
-            "fade_in = 2\n" +
-            "fade_out = 3\n" +
-            "starts_at = 5\n" +
-            "duration = 10\n" +
-            "overlap (ONLY for single oneshot, NOT with 5 * oneshot)\n\n" +
-            "Movement (CRITICAL - EXACT parameter counts required):\n" +
-            "move = walk, x, z, speed (3 params: x and z coordinates, speed 0.1-2.0 is good)\n" +
-            "move = fly, x, y, z, speed (4 params: x, y, z coordinates, speed 0.1-2.0 is good)\n" +
-            "move = pos, x, y, z (3 params: fixed x, y, z coordinates)\n\n" +
-            "Visual:\n" +
-            "visual = sphere\n" +
-            "visual = trail\n" +
-            "visual = sphere and trail\n\n" +
-            "Groups:\n" +
-            "group mygroup:\n" +
-            "    volume = 0.5\n" +
-            "    pitch = 1.2\n" +
-            "    loop \"clip1\":\n" +
-            "    oneshot \"clip2\":\n\n" +
-            "AVAILABLE AUDIO ONLY:\n" +
-            "voice/1 to voice/40 (use oneshot)\n" +
-            "conversation/people, conversation/hello (use oneshot or loop)\n" +
-            "bird/1 to bird/7, bird/1to4, bird/1to7 (ALWAYS use oneshot with \"every\" timing)\n" +
-            "ambience/forest, ambience/lab (use loop)\n" +
-            "music/beat (use loop)\n" +
-            "bicycle/1 to bicycle/37 (use oneshot with \"every\" timing)\n" +
-            "footsteps/1 to footsteps/36 (use oneshot with \"every\" timing)\n\n" +
-            "NO car sounds available!\n\n" +
-            "Example:\n" +
-            "# Forest scene\n" +
+        private const string SYSTEM_PROMPT = "Output ONLY valid Satie code. No markdown or explanations.\n\n" +
+            "SYNTAX RULES:\n" +
+            "- ALWAYS add colon: loop \"clip\": or oneshot \"clip\":\n" +
+            "- Birds/footsteps/bicycles: oneshot with \"every\"\n" +
+            "- Ambience/music: loop\n" +
+            "- Move: walk,x,z,speed OR fly,x,y,z,speed OR pos,x,y,z\n" +
+            "- Visual: sphere OR trail OR \"sphere and trail\" (NOT true/false)\n" +
+            "- NO 'overlap' with multiplied oneshots\n\n" +
+            "AVAILABLE AUDIO:\n" +
+            "voice/1-40, conversation/people, bird/1-7, ambience/forest, music/beat, bicycle/1-37, footsteps/1-36\n\n" +
+            "EXAMPLE:\n" +
             "loop \"ambience/forest\":\n" +
-            "    volume = 0.3\n\n" +
+            "    volume = 0.3\n" +
             "5 * oneshot \"bird/1to4\" every 2to5:\n" +
             "    volume = 0.1to0.3\n" +
-            "    pitch = 0.8to1.2\n" +
-            "    move = fly, -10to10, 0to10, -10to10, 0.5to2\n" +
-            "    visual = sphere";
+            "    move = fly, -10to10, 0to10, -10to10, 0.5\n" +
+            "    visual = trail";
 
         void Awake()
         {
@@ -666,6 +642,254 @@ namespace Satie
             cachedResourceInfo = null;
             lastResourceScanTime = -1f;
             Debug.Log("[AI Cache] Resource cache invalidated");
+        }
+
+        // Conversation context management
+        public void StartNewConversation()
+        {
+            currentConversation = new ConversationHistory
+            {
+                messages = new ConversationMessage[0],
+                currentScript = ""
+            };
+            isEditMode = false;
+            Debug.Log("[AI Conversation] Started new conversation");
+        }
+
+        public void SetEditMode(bool enabled, string currentScript = "")
+        {
+            isEditMode = enabled;
+            if (enabled && currentConversation == null)
+            {
+                StartNewConversation();
+            }
+            if (currentConversation != null)
+            {
+                currentConversation.currentScript = currentScript ?? "";
+            }
+            Debug.Log($"[AI Conversation] Edit mode: {enabled}");
+        }
+
+        public bool IsInEditMode()
+        {
+            return isEditMode && currentConversation != null;
+        }
+
+        public ConversationHistory GetCurrentConversation()
+        {
+            return currentConversation;
+        }
+
+        private void AddMessageToConversation(string role, string content)
+        {
+            if (currentConversation == null) return;
+
+            var newMessage = new ConversationMessage
+            {
+                role = role,
+                content = content,
+                timestamp = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            };
+
+            var messagesList = new System.Collections.Generic.List<ConversationMessage>();
+            if (currentConversation.messages != null)
+            {
+                messagesList.AddRange(currentConversation.messages);
+            }
+            messagesList.Add(newMessage);
+            currentConversation.messages = messagesList.ToArray();
+        }
+
+        public async Task<string> GenerateWithFollowUp(string prompt, string currentScript = "")
+        {
+            if (isEditMode && currentConversation != null)
+            {
+                // Add user message to conversation
+                AddMessageToConversation("user", prompt);
+                
+                // Update current script if provided
+                if (!string.IsNullOrEmpty(currentScript))
+                {
+                    currentConversation.currentScript = currentScript;
+                }
+
+                // Generate with conversation context
+                string result = await GenerateWithConversationContext(prompt, currentScript);
+                
+                // Add assistant response to conversation
+                if (!result.StartsWith("# Error"))
+                {
+                    AddMessageToConversation("assistant", result);
+                }
+                
+                return result;
+            }
+            else
+            {
+                // Regular generation, but store in conversation for potential follow-up
+                StartNewConversation();
+                AddMessageToConversation("user", prompt);
+                
+                string result = await GenerateWithResourceAwareness(prompt);
+                
+                if (!result.StartsWith("# Error"))
+                {
+                    AddMessageToConversation("assistant", result);
+                    currentConversation.currentScript = result;
+                }
+                
+                return result;
+            }
+        }
+
+        private async Task<string> GenerateWithConversationContext(string prompt, string currentScript)
+        {
+            if (!await LoadApiKey())
+            {
+                return "# Error: API key not found. Please create Assets/api_key.txt with your OpenAI API key.";
+            }
+
+            try
+            {
+                // Get resource info
+                string resourceInfo = await GetCachedResourceInfo();
+                
+                // Build conversation context
+                string conversationContext = BuildConversationContext();
+                
+                // Create edit-specific system prompt
+                string editSystemPrompt = CreateEditSystemPrompt(resourceInfo, currentScript);
+                
+                // Generate with conversation context
+                return await GenerateSatieCodeWithConversation(prompt, editSystemPrompt, conversationContext);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Follow-up generation error: {e.Message}");
+                return $"# Error: {e.Message}";
+            }
+        }
+
+        private string BuildConversationContext()
+        {
+            if (currentConversation?.messages == null || currentConversation.messages.Length == 0)
+                return "";
+
+            var context = new System.Text.StringBuilder();
+            context.AppendLine("PREVIOUS:");
+            
+            // Only include the last 4 messages to save tokens
+            int startIndex = Mathf.Max(0, currentConversation.messages.Length - 4);
+            for (int i = startIndex; i < currentConversation.messages.Length - 1; i++) // Exclude the current prompt
+            {
+                var msg = currentConversation.messages[i];
+                // Truncate long messages
+                string content = msg.content.Length > 150 ? msg.content.Substring(0, 150) + "..." : msg.content;
+                context.AppendLine($"{(msg.role == "user" ? "USER" : "AI")}: {content}");
+            }
+            
+            return context.ToString();
+        }
+
+        private string CreateEditSystemPrompt(string resourceInfo, string currentScript)
+        {
+            string baseSystemPrompt = SYSTEM_PROMPT.Replace(
+                "voice/1-40, conversation/people, bird/1-7, ambience/forest, music/beat, bicycle/1-37, footsteps/1-36",
+                resourceInfo
+            );
+
+            string editPrompt = baseSystemPrompt + "\n\n" +
+                "EDIT MODE: Make ONLY requested changes. Output COMPLETE modified script.\n\n";
+
+            if (!string.IsNullOrEmpty(currentScript))
+            {
+                editPrompt += $"CURRENT SCRIPT:\n{currentScript}\n\n";
+            }
+
+            return editPrompt;
+        }
+
+        private async Task<string> GenerateSatieCodeWithConversation(string prompt, string systemPrompt, string conversationContext)
+        {
+            const int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    Debug.Log($"[AI Edit] Attempt {attempt}/{maxRetries} - Generating with conversation context...");
+                    
+                    string systemPromptEscaped = EscapeJsonString(systemPrompt);
+                    string contextEscaped = EscapeJsonString(conversationContext);
+                    string userPromptEscaped = EscapeJsonString($"{contextEscaped}\n\nUSER REQUEST: {prompt}");
+                    
+                    string jsonBody = $@"{{
+                        ""model"": ""{config.model}"",
+                        ""messages"": [
+                            {{""role"": ""system"", ""content"": ""{systemPromptEscaped}""}},
+                            {{""role"": ""user"", ""content"": ""{userPromptEscaped}""}}
+                        ],
+                        ""temperature"": {config.temperature},
+                        ""max_completion_tokens"": {config.maxTokens}
+                    }}";
+
+                    var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+                    
+                    if (!httpClient.DefaultRequestHeaders.Contains("Authorization"))
+                    {
+                        httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                    }
+                    
+                    Debug.Log($"[AI Edit] Sending edit request...");
+                    var response = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+                    var responseText = await response.Content.ReadAsStringAsync();
+                    
+                    Debug.Log($"[AI Edit] Response status: {response.StatusCode}");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Debug.LogError($"OpenAI API Error (edit attempt {attempt}): {response.StatusCode} - {responseText}");
+                        
+                        if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500)
+                        {
+                            return $"# Error: API request failed - {response.StatusCode}\n# Details: {responseText}";
+                        }
+                        
+                        if (attempt == maxRetries)
+                        {
+                            return $"# Error: API request failed after {maxRetries} attempts - {response.StatusCode}\n# Details: {responseText}";
+                        }
+                        
+                        await Task.Delay(1000 * attempt);
+                        continue;
+                    }
+
+                    var contentMatch = Regex.Match(responseText, @"""content""\s*:\s*""((?:[^""\\]|\\.)*)""");
+                    if (contentMatch.Success)
+                    {
+                        string extractedContent = contentMatch.Groups[1].Value;
+                        extractedContent = Regex.Unescape(extractedContent);
+                        Debug.Log($"[AI Edit] Success! Generated {extractedContent.Length} characters");
+                        return extractedContent;
+                    }
+
+                    Debug.LogWarning($"[AI Edit] No content found in response (attempt {attempt})");
+                    if (attempt == maxRetries)
+                    {
+                        return "# Error: No response from AI";
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[AI Edit] Error on attempt {attempt}/{maxRetries}: {e.Message}");
+                    if (attempt == maxRetries)
+                    {
+                        return $"# Error: {e.Message}";
+                    }
+                    await Task.Delay(1000 * attempt);
+                }
+            }
+            
+            return "# Error: All retry attempts failed";
         }
 
     }
