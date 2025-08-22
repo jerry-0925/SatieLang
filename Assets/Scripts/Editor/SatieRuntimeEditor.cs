@@ -18,6 +18,14 @@ public class SatieRuntimeEditor : Editor
     private string lastPrompt = "";
     private string lastGeneratedCode = "";
     
+    // Follow-up editing
+    private bool editMode = false;
+    private bool showConversationHistory = false;
+    private Vector2 conversationScrollPos;
+    
+    // Advanced settings
+    private bool showAdvancedSettings = false;
+    
     private GUIStyle promptStyle;
     private GUIStyle generatedCodeStyle;
     private GUIStyle headerStyle;
@@ -35,11 +43,14 @@ public class SatieRuntimeEditor : Editor
         InitStyles();
         
         EditorGUILayout.PropertyField(scriptFileProp);
-        EditorGUILayout.PropertyField(useHRTFProp);
         
         EditorGUILayout.Space(20);
         
         DrawAISection();
+        
+        EditorGUILayout.Space(10);
+        
+        DrawAdvancedSettings();
         
         EditorGUILayout.Space(10);
         
@@ -83,7 +94,33 @@ public class SatieRuntimeEditor : Editor
         EditorGUILayout.LabelField("AI Code Generation", headerStyle);
         EditorGUILayout.Space(5);
         
-        EditorGUILayout.LabelField("Describe the audio experience you want:", EditorStyles.boldLabel);
+        // Mode selector
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField("Mode:", GUILayout.Width(40));
+        
+        bool newEditMode = GUILayout.Toggle(!editMode, "New Script", EditorStyles.radioButton);
+        bool newContinueMode = GUILayout.Toggle(editMode, "Continue Editing", EditorStyles.radioButton);
+        
+        if (newEditMode && editMode)
+        {
+            SetEditMode(false);
+        }
+        else if (newContinueMode && !editMode)
+        {
+            SetEditMode(true);
+        }
+        
+        EditorGUILayout.EndHorizontal();
+        
+        if (editMode)
+        {
+            EditorGUILayout.Space(3);
+            EditorGUILayout.LabelField("Follow-up prompt (what would you like to change?):", EditorStyles.boldLabel);
+        }
+        else
+        {
+            EditorGUILayout.LabelField("Describe the audio experience you want:", EditorStyles.boldLabel);
+        }
         
         EditorGUI.BeginChangeCheck();
         aiPrompt = EditorGUILayout.TextArea(aiPrompt, promptStyle, GUILayout.Height(60));
@@ -92,12 +129,26 @@ public class SatieRuntimeEditor : Editor
             showGeneratedCode = false;
         }
         
+        // Show conversation history in edit mode
+        if (editMode && SatieAICodeGen.Instance.IsInEditMode())
+        {
+            EditorGUILayout.Space(5);
+            showConversationHistory = EditorGUILayout.Foldout(showConversationHistory, "Conversation History");
+            
+            if (showConversationHistory)
+            {
+                DrawConversationHistory();
+            }
+        }
+        
         EditorGUILayout.Space(5);
         
         EditorGUI.BeginDisabledGroup(isGenerating || string.IsNullOrWhiteSpace(aiPrompt));
         
         GUI.backgroundColor = new Color(0.3f, 0.7f, 0.3f);
-        if (GUILayout.Button(isGenerating ? "Generating..." : "Generate Satie Code", GUILayout.Height(30)))
+        string buttonText = isGenerating ? "Generating..." : 
+                           editMode ? "Apply Changes" : "Generate Satie Code";
+        if (GUILayout.Button(buttonText, GUILayout.Height(30)))
         {
             GenerateCode();
         }
@@ -162,31 +213,56 @@ public class SatieRuntimeEditor : Editor
             }
         }
         
-        // Resource cache controls
-        EditorGUILayout.Space(5);
-        EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Refresh Audio Cache", GUILayout.Height(20)))
-        {
-            SatieAICodeGen.Instance.InvalidateResourceCache();
-        }
-        EditorGUILayout.EndHorizontal();
         
-        if (!File.Exists(Path.Combine(Application.dataPath, "api_key.txt")))
+        EditorGUILayout.EndVertical();
+    }
+
+    private void DrawAdvancedSettings()
+    {
+        var bgColor = GUI.backgroundColor;
+        GUI.backgroundColor = new Color(0.5f, 0.3f, 0.2f, 0.2f);
+        
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        GUI.backgroundColor = bgColor;
+        
+        showAdvancedSettings = EditorGUILayout.Foldout(showAdvancedSettings, "Advanced Settings", true);
+        
+        if (showAdvancedSettings)
         {
             EditorGUILayout.Space(5);
-            EditorGUILayout.HelpBox("API key not found! Create Assets/api_key.txt with your OpenAI API key.", MessageType.Warning);
             
-            if (GUILayout.Button("Create API Key File"))
+            // HRTF Setting
+            EditorGUILayout.PropertyField(useHRTFProp);
+            
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("Audio & API Controls", EditorStyles.boldLabel);
+            
+            // Resource cache controls
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Refresh Audio Cache", GUILayout.Height(20)))
             {
-                CreateApiKeyFile();
+                SatieAICodeGen.Instance.InvalidateResourceCache();
             }
-        }
-        else
-        {
-            EditorGUILayout.Space(5);
-            if (GUILayout.Button("Test API Connection", GUILayout.Height(20)))
+            EditorGUILayout.EndHorizontal();
+            
+            // API controls
+            if (!File.Exists(Path.Combine(Application.dataPath, "api_key.txt")))
             {
-                TestAPIConnection();
+                EditorGUILayout.Space(5);
+                EditorGUILayout.HelpBox("API key not found! Create Assets/api_key.txt with your OpenAI API key.", MessageType.Warning);
+                
+                if (GUILayout.Button("Create API Key File"))
+                {
+                    CreateApiKeyFile();
+                }
+            }
+            else
+            {
+                EditorGUILayout.Space(5);
+                if (GUILayout.Button("Test API Connection", GUILayout.Height(20)))
+                {
+                    TestAPIConnection();
+                }
             }
         }
         
@@ -227,13 +303,30 @@ public class SatieRuntimeEditor : Editor
         {
             var generator = SatieAICodeGen.Instance;
             
-            // Use resource-aware generation
-            generatedCode = await generator.GenerateWithResourceAwareness(aiPrompt);
+            // Get current script content if in edit mode
+            string currentScript = "";
+            if (editMode)
+            {
+                var scriptFile = scriptFileProp.objectReferenceValue as TextAsset;
+                if (scriptFile != null)
+                {
+                    currentScript = scriptFile.text;
+                }
+            }
+            
+            // Use follow-up generation or regular generation
+            generatedCode = await generator.GenerateWithFollowUp(aiPrompt, currentScript);
             
             lastPrompt = aiPrompt;
             lastGeneratedCode = generatedCode;
             showGeneratedCode = true;
             showRLHFFeedback = true;
+            
+            // Clear prompt after successful generation in edit mode
+            if (editMode)
+            {
+                aiPrompt = "";
+            }
         }
         catch (System.Exception e)
         {
@@ -369,5 +462,84 @@ public class SatieRuntimeEditor : Editor
             Debug.LogError($"Failed to record RLHF feedback: {e.Message}");
             EditorUtility.DisplayDialog("Feedback Error", $"Failed to record feedback: {e.Message}", "OK");
         }
+    }
+    
+    private void SetEditMode(bool enabled)
+    {
+        editMode = enabled;
+        var generator = SatieAICodeGen.Instance;
+        
+        if (enabled)
+        {
+            // Get current script content for edit mode
+            string currentScript = "";
+            var scriptFile = scriptFileProp.objectReferenceValue as TextAsset;
+            if (scriptFile != null)
+            {
+                currentScript = scriptFile.text;
+            }
+            generator.SetEditMode(true, currentScript);
+        }
+        else
+        {
+            generator.SetEditMode(false);
+            showConversationHistory = false;
+        }
+        
+        // Clear prompt when switching modes
+        aiPrompt = "";
+        showGeneratedCode = false;
+    }
+    
+    private void DrawConversationHistory()
+    {
+        var conversation = SatieAICodeGen.Instance.GetCurrentConversation();
+        if (conversation?.messages == null || conversation.messages.Length == 0)
+        {
+            EditorGUILayout.LabelField("No conversation history yet.", EditorStyles.miniLabel);
+            return;
+        }
+        
+        var bgColor = GUI.backgroundColor;
+        
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        conversationScrollPos = EditorGUILayout.BeginScrollView(conversationScrollPos, GUILayout.Height(150));
+        
+        for (int i = 0; i < conversation.messages.Length; i++)
+        {
+            var msg = conversation.messages[i];
+            
+            // Style based on role
+            if (msg.role == "user")
+            {
+                GUI.backgroundColor = new Color(0.7f, 0.8f, 1f, 0.3f);
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                EditorGUILayout.LabelField($"You ({msg.timestamp}):", EditorStyles.boldLabel);
+            }
+            else
+            {
+                GUI.backgroundColor = new Color(0.8f, 1f, 0.7f, 0.3f);
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                EditorGUILayout.LabelField($"AI ({msg.timestamp}):", EditorStyles.boldLabel);
+            }
+            
+            GUI.backgroundColor = bgColor;
+            
+            // Show abbreviated content
+            string content = msg.content;
+            if (content.Length > 200)
+            {
+                content = content.Substring(0, 200) + "...";
+            }
+            
+            EditorGUILayout.LabelField(content, EditorStyles.wordWrappedLabel);
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(2);
+        }
+        
+        EditorGUILayout.EndScrollView();
+        EditorGUILayout.EndVertical();
+        
+        GUI.backgroundColor = bgColor;
     }
 }
