@@ -1,45 +1,9 @@
-# Farm Environment
 loop "ambience/forest":
-    volume = 0.2
-
-5 * loop "bird/2":
-    volume = 0.08to0.2
-    pitch = 0.9to1.1
-    move = fly, -20to20, -20to20, 1to3
-    visual = sphere
-
-loop "bird/3":
-    volume = 0.1
-    move = fixed, 5, 0, -5
-    visual = trail
-
-5 * oneshot "bird/1" every 5to7:
-    volume = 0.1to0.3
-    pitch = 1to1.2
-    overlap
-
-group farm_animals:
-    volume = 0.5
-    pitch = 0.8to1.0
-    loop "voice/1":
-        move = walk, -10to10, -10to10, 0.5to1.5
-    loop "voice/2":
-        move = walk, -5to5, -5to5, 0.5to1.5
-
-group bicycle_paths:
     volume = 0.3
-    pitch = 1.0to1.2
-    3 * loop "bicycle/1":
-        move = walk, -20to20, -20to20, 2to4
-        visual = trail
+    fade_in = 2
 
-oneshot "conversation/people":
-    volume = 0.7
-    move = fixed, 0, 0, 10
-    fade_in = 1
-    fade_out = 2
-
-oneshot "conversation/hello" every 10to15:
-    volume = 0.8
-    move = walk, -5to5, -10to10, 1to2
-    visual = sphere and trail
+4 * loop "bird/1to7":
+    volume = 0.1to0.25
+    pitch = 0.9to1.2
+    move = fly, -12to12, -10to10, 0.4to1.5
+    visual = sphere

@@ -15,7 +15,7 @@ namespace Satie
     public class SatieAIConfig
     {
         public string apiKeyPath = "api_key.txt";
-        public string model = "gpt-4-turbo-preview"; // Options: gpt-4-turbo-preview, gpt-4, gpt-3.5-turbo
+        public string model = "gpt-5"; // Options: gpt-5, gpt-4-turbo-preview, gpt-4, gpt-3.5-turbo
         public float temperature = 1.0f;
         public int maxTokens = 3000;
     }
@@ -118,11 +118,12 @@ loop ""ambience/forest"":
             DontDestroyOnLoad(gameObject);
             httpClient = new HttpClient();
             
-            // Force update model if it's still using old o1-preview
-            if (config.model == "o1-preview")
+            // Force update model to GPT-5 if it's still using old models
+            if (config.model != "gpt-5")
             {
-                config.model = "gpt-4-turbo-preview";
-                Debug.Log("Updated AI model from o1-preview to gpt-4-turbo-preview");
+                string oldModel = config.model;
+                config.model = "gpt-5";
+                Debug.Log($"Updated AI model from {oldModel} to gpt-5");
             }
         }
 
@@ -195,10 +196,10 @@ loop ""ambience/forest"":
             // Debug: Log API key info (safely)
             Debug.Log($"[AI Debug] API Key loaded: {apiKey.Substring(0, 7)}...{apiKey.Substring(apiKey.Length - 4)} (length: {apiKey.Length})");
             Debug.Log($"[AI Debug] Using model: {config.model}");
-            Debug.Log($"[AI Debug] Temperature: {config.temperature}, Max Tokens: {config.maxTokens}");
 
             try
             {
+                // Standard chat completion format for GPT-5 and other models
                 string systemPromptEscaped = EscapeJsonString(SYSTEM_PROMPT);
                 string userPromptEscaped = EscapeJsonString(prompt);
                 
@@ -209,8 +210,10 @@ loop ""ambience/forest"":
                         {{""role"": ""user"", ""content"": ""{userPromptEscaped}""}}
                     ],
                     ""temperature"": {config.temperature},
-                    ""max_tokens"": {config.maxTokens}
+                    ""max_completion_tokens"": {config.maxTokens}
                 }}";
+                
+                Debug.Log($"[AI Debug] Using model: {config.model} (temperature: {config.temperature}, max_completion_tokens: {config.maxTokens})");
 
                 Debug.Log($"[AI Debug] Request URL: https://api.openai.com/v1/chat/completions");
                 Debug.Log($"[AI Debug] Request body (first 500 chars): {jsonBody.Substring(0, Mathf.Min(500, jsonBody.Length))}...");
