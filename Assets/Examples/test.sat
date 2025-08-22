@@ -1,11 +1,12 @@
-loop "ambience/forest":
-    volume = 0.1
-loop "music/beat":
-    volume = 0.3
-oneshot "footsteps/1to36" every 0.06to0.14:
-    volume = 0.02to0.06
-    move = pos, -20to20, 8to20, -20to20
-oneshot "bird/1to7" every 4to8:
-    volume = 0.1to0.3
-    move = fly, -30to30, 8to25, -30to30, 1.2
+4 * oneshot "bicycle/1to37" every 4to9:
+    volume = 0.3to0.7
+    move = walk, -12to12, -6to6, 0.8to2.0
+    visual = trail
+3 * oneshot "bicycle/1to37" every 8to15:
+    volume = 0.2to0.5
+    move = pos, -20to20, 0, -20to20
+    visual = sphere
+2 * oneshot "bicycle/1to37" every 12to20:
+    volume = 0.5to1.0
+    move = walk, -25to-15, -10to10, 1.5to3.0
     visual = trail
