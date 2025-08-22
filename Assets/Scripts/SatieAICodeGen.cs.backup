@@ -61,66 +61,77 @@ namespace Satie
         private string apiKey;
         private HttpClient httpClient;
 
-        private const string SYSTEM_PROMPT = "Output ONLY valid Satie code. Never add markdown code blocks or explanatory text.\n\n" +
-            "CRITICAL SYNTAX RULES:\n" +
-            "- ALWAYS add colon after statements: loop \"clip\": or oneshot \"clip\":\n" +
-            "- NEVER use 'overlap' with multiplied oneshots (5 * oneshot)\n" +
-            "- Move parameters for walk/fly: x, z, speed (NOT separate min/max for each axis)\n" +
-            "- NO 'drive' move type - only walk, fly, or fixed\n" +
-            "- Check available audio files before using them\n" +
-            "- AUDIO TYPE RULES:\n" +
-            "  - Birds: ALWAYS oneshot with \"every\" (birds chirp discretely)\n" +
-            "  - Footsteps: ALWAYS oneshot with \"every\" (discrete steps)\n" +
-            "  - Bicycles: ALWAYS oneshot with \"every\" (discrete sounds)\n" +
-            "  - Ambience: ALWAYS loop (continuous background)\n" +
-            "  - Music: ALWAYS loop (continuous playback)\n\n" +
-            "SATIE SYNTAX:\n\n" +
-            "Statements (MUST have colon):\n" +
-            "loop \"audio/clip\":\n" +
-            "oneshot \"audio/clip\":\n" +
-            "oneshot \"audio/clip\" every 3to5:\n" +
-            "5 * loop \"clip\":\n" +
-            "5 * oneshot \"clip\" every 3to5:\n\n" +
-            "Properties (indent under statements):\n" +
-            "volume = 0.5 or volume = 0.1to0.8\n" +
-            "pitch = 1.0 or pitch = 0.8to1.2\n" +
-            "fade_in = 2\n" +
-            "fade_out = 3\n" +
-            "starts_at = 5\n" +
-            "duration = 10\n" +
-            "overlap (ONLY for single oneshot, NOT with 5 * oneshot)\n\n" +
-            "Movement (CRITICAL - EXACT parameter counts required):\n" +
-            "move = walk, x, z, speed (3 params: x and z coordinates, speed 0.1-2.0 is good)\n" +
-            "move = fly, x, y, z, speed (4 params: x, y, z coordinates, speed 0.1-2.0 is good)\n" +
-            "move = pos, x, y, z (3 params: fixed x, y, z coordinates)\n\n" +
-            "Visual:\n" +
-            "visual = sphere\n" +
-            "visual = trail\n" +
-            "visual = sphere and trail\n\n" +
-            "Groups:\n" +
-            "group mygroup:\n" +
-            "    volume = 0.5\n" +
-            "    pitch = 1.2\n" +
-            "    loop \"clip1\":\n" +
-            "    oneshot \"clip2\":\n\n" +
-            "AVAILABLE AUDIO ONLY:\n" +
-            "voice/1 to voice/40 (use oneshot)\n" +
-            "conversation/people, conversation/hello (use oneshot or loop)\n" +
-            "bird/1 to bird/7, bird/1to4, bird/1to7 (ALWAYS use oneshot with \"every\" timing)\n" +
-            "ambience/forest, ambience/lab (use loop)\n" +
-            "music/beat (use loop)\n" +
-            "bicycle/1 to bicycle/37 (use oneshot with \"every\" timing)\n" +
-            "footsteps/1 to footsteps/36 (use oneshot with \"every\" timing)\n\n" +
-            "NO car sounds available!\n\n" +
-            "Example:\n" +
-            "# Forest scene\n" +
-            "loop \"ambience/forest\":\n" +
-            "    volume = 0.3\n\n" +
-            "5 * oneshot \"bird/1to4\" every 2to5:\n" +
-            "    volume = 0.1to0.3\n" +
-            "    pitch = 0.8to1.2\n" +
-            "    move = fly, -10to10, 0to10, -10to10, 0.5to2\n" +
-            "    visual = sphere";
+        private const string SYSTEM_PROMPT = @"Output ONLY valid Satie code. Never add markdown code blocks or explanatory text.
+
+CRITICAL SYNTAX RULES:
+- ALWAYS add colon after statements: loop ""clip"": or oneshot ""clip"":
+- NEVER use 'overlap' with multiplied oneshots (5 * oneshot)
+- Move parameters for walk/fly: x, z, speed (NOT separate min/max for each axis)
+- NO 'drive' move type - only walk, fly, or fixed
+- Check available audio files before using them
+- AUDIO TYPE RULES:
+  - Birds: ALWAYS oneshot with ""every"" (birds chirp discretely)
+  - Footsteps: ALWAYS oneshot with ""every"" (discrete steps)
+  - Bicycles: ALWAYS oneshot with ""every"" (discrete sounds)
+  - Ambience: ALWAYS loop (continuous background)
+  - Music: ALWAYS loop (continuous playback)
+
+SATIE SYNTAX:
+
+Statements (MUST have colon):
+loop ""audio/clip"":
+oneshot ""audio/clip"":
+oneshot ""audio/clip"" every 3to5:
+5 * loop ""clip"":
+5 * oneshot ""clip"" every 3to5:
+
+Properties (indent under statements):
+volume = 0.5 or volume = 0.1to0.8
+pitch = 1.0 or pitch = 0.8to1.2
+fade_in = 2
+fade_out = 3
+starts_at = 5
+duration = 10
+overlap (ONLY for single oneshot, NOT with 5 * oneshot)
+
+Movement (CRITICAL - EXACT parameter counts required):
+move = walk, x, z, speed (3 params: x and z coordinates, speed 0.1-2.0 is good)
+move = fly, x, y, z, speed (4 params: x, y, z coordinates, speed 0.1-2.0 is good)
+move = pos, x, y, z (3 params: fixed x, y, z coordinates)
+
+Visual:
+visual = sphere
+visual = trail
+visual = sphere and trail
+
+Groups:
+group mygroup:
+    volume = 0.5
+    pitch = 1.2
+    loop ""clip1"":
+    oneshot ""clip2"":
+
+AVAILABLE AUDIO ONLY:
+voice/1 to voice/40 (use oneshot)
+conversation/people, conversation/hello (use oneshot or loop)
+bird/1 to bird/7, bird/1to4, bird/1to7 (ALWAYS use oneshot with "every" timing)
+ambience/forest, ambience/lab (use loop)
+music/beat (use loop)
+bicycle/1 to bicycle/37 (use oneshot with "every" timing)
+footsteps/1 to footsteps/36 (use oneshot with "every" timing)
+
+NO car sounds available!
+
+Example:
+# Forest scene
+loop ""ambience/forest"":
+    volume = 0.3
+
+5 * oneshot ""bird/1to4"" every 2to5:
+    volume = 0.1to0.3
+    pitch = 0.8to1.2
+    move = fly, -10to10, 0to10, -10to10, 0.5to2
+    visual = sphere";
 
         void Awake()
         {

@@ -1,5 +1,17 @@
-5 * oneshot "bicycle/1to37" every 2to3:
-    volume = 0.1to0.9
-    pitch = 0.8to1.3
-    move = fly, -20to20, -20to20, -20to20, 0.01to0.12
-    visual = object "test" and trail
+loop "ambience/rain":
+    volume = 0.12to0.2
+    fade_in = 3
+    move = pos, 0, 0, 0
+    visual = sphere
+
+2 * oneshot "bird/1to7" every 3to16:
+    volume = 0.08to0.18
+    pitch = 0.9to1.2
+    move = fly, -15to15, 2to12, -15to15, 0.6to1.6
+    visual = sphere
+
+loop "music/beat":
+    volume = 0.1to0.2
+    fade_in = 4
+    move = pos, 0, 1.8, 0
+    visual = sphere and trail
