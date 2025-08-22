@@ -10,6 +10,7 @@ public class SatieRuntime : MonoBehaviour
 {
     [Tooltip(".sp script (TextAsset)")]
     [SerializeField] private TextAsset scriptFile;
+    public TextAsset ScriptFile => scriptFile;
     
     [Header("Spatial Audio")]
     [Tooltip("Enable Steam Audio HRTF if available")]
@@ -43,7 +44,7 @@ public class SatieRuntime : MonoBehaviour
     }
 #endif
     
-    void Sync(bool fullReset)
+    public void Sync(bool fullReset)
     {
         if (fullReset) HardReset();
 

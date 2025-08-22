@@ -73,3 +73,11 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# API Keys - NEVER COMMIT
+/[Aa]ssets/api_key.txt
+/[Aa]ssets/api_key.txt.meta
+/[Aa]ssets/openai_api_key.txt
+/[Aa]ssets/openai_api_key.txt.meta
+/[Aa]ssets/*.key
+/[Aa]ssets/*.key.meta
