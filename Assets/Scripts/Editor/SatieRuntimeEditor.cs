@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEditor;
@@ -25,7 +27,15 @@ public class SatieRuntimeEditor : Editor
     
     // Advanced settings
     private bool showAdvancedSettings = false;
-    
+
+    // Audio generation
+    private bool showAudioGeneration = false;
+    private string audioPrompt = "";
+    private bool isGeneratingAudio = false;
+    private AudioGenerationResult currentAudioResult;
+    private AudioSource previewAudioSource;
+    private int selectedAudioIndex = -1;
+
     private GUIStyle promptStyle;
     private GUIStyle generatedCodeStyle;
     private GUIStyle headerStyle;
@@ -47,9 +57,13 @@ public class SatieRuntimeEditor : Editor
         EditorGUILayout.Space(20);
         
         DrawAISection();
-        
+
         EditorGUILayout.Space(10);
-        
+
+        DrawAudioGenerationSection();
+
+        EditorGUILayout.Space(10);
+
         DrawAdvancedSettings();
         
         EditorGUILayout.Space(10);
@@ -215,6 +229,266 @@ public class SatieRuntimeEditor : Editor
         
         
         EditorGUILayout.EndVertical();
+    }
+
+    private void DrawAudioGenerationSection()
+    {
+        var bgColor = GUI.backgroundColor;
+        GUI.backgroundColor = new Color(0.3f, 0.2f, 0.5f, 0.2f);
+
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        GUI.backgroundColor = bgColor;
+
+        showAudioGeneration = EditorGUILayout.Foldout(showAudioGeneration, "AI Audio Generation (AudioLDM2)", true);
+
+        if (showAudioGeneration)
+        {
+            EditorGUILayout.Space(5);
+
+            EditorGUILayout.LabelField("Generate audio from text description:", EditorStyles.boldLabel);
+
+            EditorGUI.BeginChangeCheck();
+            audioPrompt = EditorGUILayout.TextArea(audioPrompt, promptStyle, GUILayout.Height(40));
+            if (EditorGUI.EndChangeCheck())
+            {
+                // Clear previous results when prompt changes
+                currentAudioResult = null;
+                selectedAudioIndex = -1;
+            }
+
+            EditorGUILayout.Space(5);
+
+            EditorGUI.BeginDisabledGroup(isGeneratingAudio || string.IsNullOrWhiteSpace(audioPrompt));
+
+            GUI.backgroundColor = new Color(0.3f, 0.5f, 0.7f);
+            string audioButtonText = isGeneratingAudio ? "Generating Audio..." : "Generate 3 Audio Options";
+            if (GUILayout.Button(audioButtonText, GUILayout.Height(30)))
+            {
+                GenerateAudioOptions();
+            }
+            GUI.backgroundColor = bgColor;
+
+            EditorGUI.EndDisabledGroup();
+
+            // Display generated audio options
+            if (currentAudioResult != null && currentAudioResult.audioData != null)
+            {
+                EditorGUILayout.Space(10);
+                EditorGUILayout.LabelField("Generated Audio Options:", EditorStyles.boldLabel);
+
+                for (int i = 0; i < currentAudioResult.audioData.Length; i++)
+                {
+                    if (currentAudioResult.audioData[i] != null && currentAudioResult.audioData[i].Length > 0)
+                    {
+                        EditorGUILayout.BeginHorizontal();
+
+                        // Radio button for selection
+                        bool isSelected = EditorGUILayout.Toggle(selectedAudioIndex == i, GUILayout.Width(20));
+                        if (isSelected && selectedAudioIndex != i)
+                        {
+                            selectedAudioIndex = i;
+                        }
+
+                        EditorGUILayout.LabelField($"Option {i + 1}", GUILayout.Width(60));
+
+                        // Play button
+                        if (GUILayout.Button("▶ Play", GUILayout.Width(60)))
+                        {
+                            PlayAudioPreview(i);
+                        }
+
+                        // Stop button
+                        if (GUILayout.Button("■ Stop", GUILayout.Width(60)))
+                        {
+                            StopAudioPreview();
+                        }
+
+                        // File size info
+                        float sizeKB = currentAudioResult.audioData[i].Length / 1024f;
+                        EditorGUILayout.LabelField($"{sizeKB:F1} KB", GUILayout.Width(60));
+
+                        EditorGUILayout.EndHorizontal();
+                    }
+                }
+
+                EditorGUILayout.Space(5);
+
+                EditorGUI.BeginDisabledGroup(selectedAudioIndex < 0);
+
+                GUI.backgroundColor = new Color(0.3f, 0.7f, 0.3f);
+                if (GUILayout.Button($"Save Selected Audio (Option {selectedAudioIndex + 1}) to Resources", GUILayout.Height(25)))
+                {
+                    SaveSelectedAudio();
+                }
+                GUI.backgroundColor = bgColor;
+
+                EditorGUI.EndDisabledGroup();
+
+                // Show saved files
+                EditorGUILayout.Space(5);
+                if (GUILayout.Button("Show Generated Audio Files", GUILayout.Height(20)))
+                {
+                    ShowGeneratedAudioFiles();
+                }
+            }
+        }
+
+        EditorGUILayout.EndVertical();
+    }
+
+    private async void GenerateAudioOptions()
+    {
+        isGeneratingAudio = true;
+        currentAudioResult = null;
+        selectedAudioIndex = -1;
+        Repaint();
+
+        try
+        {
+            var generator = SatieAudioGen.Instance;
+            currentAudioResult = await generator.GenerateAudioOptions(audioPrompt, 2, OnAudioOptionGenerated);
+
+            if (currentAudioResult != null)
+            {
+                Debug.Log($"Successfully generated {currentAudioResult.audioData.Length} audio options");
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("Generation Failed",
+                    "Failed to generate audio. Make sure the AudioLDM2 server is running.", "OK");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Audio generation error: {e.Message}");
+            EditorUtility.DisplayDialog("Generation Error", $"Error: {e.Message}", "OK");
+        }
+        finally
+        {
+            isGeneratingAudio = false;
+            Repaint();
+        }
+    }
+
+    private void OnAudioOptionGenerated(AudioGenerationResult result, int optionIndex)
+    {
+        // Update the current result reference
+        currentAudioResult = result;
+
+        // Force UI repaint to show the newly available option
+        if (EditorApplication.isPlaying || !EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            EditorApplication.delayCall += () => Repaint();
+        }
+
+        Debug.Log($"Audio option {optionIndex + 1} is now available for preview");
+    }
+
+    private void PlayAudioPreview(int index)
+    {
+        if (currentAudioResult == null || index < 0 || index >= currentAudioResult.audioData.Length)
+            return;
+
+        if (currentAudioResult.audioData[index] == null || currentAudioResult.audioData[index].Length == 0)
+        {
+            Debug.LogError($"No audio data for option {index + 1}");
+            return;
+        }
+
+        try
+        {
+            // Create audio source if needed
+            if (previewAudioSource == null)
+            {
+                GameObject tempGO = new GameObject("AudioPreview");
+                tempGO.hideFlags = HideFlags.HideAndDontSave;
+                previewAudioSource = tempGO.AddComponent<AudioSource>();
+            }
+
+            // Convert bytes to AudioClip
+            var audioClip = SatieAudioGen.Instance.ConvertBytesToAudioClip(
+                currentAudioResult.audioData[index],
+                $"Preview_{index}"
+            );
+
+            if (audioClip != null)
+            {
+                previewAudioSource.clip = audioClip;
+                previewAudioSource.Play();
+                Debug.Log($"Playing audio option {index + 1}");
+            }
+            else
+            {
+                Debug.LogError("Failed to convert audio data to AudioClip");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error playing audio preview: {e.Message}");
+        }
+    }
+
+    private void StopAudioPreview()
+    {
+        if (previewAudioSource != null && previewAudioSource.isPlaying)
+        {
+            previewAudioSource.Stop();
+            Debug.Log("Stopped audio preview");
+        }
+    }
+
+    private async void SaveSelectedAudio()
+    {
+        if (currentAudioResult == null || selectedAudioIndex < 0)
+            return;
+
+        try
+        {
+            string savedPath = await SatieAudioGen.Instance.SaveSelectedAudio(
+                currentAudioResult,
+                selectedAudioIndex
+            );
+
+            if (!string.IsNullOrEmpty(savedPath))
+            {
+                EditorUtility.DisplayDialog("Audio Saved",
+                    $"Audio saved to:\n{savedPath}\n\nYou can now reference it in Satie code as:\n\"generation/{Path.GetFileName(savedPath)}\"",
+                    "OK");
+
+                Debug.Log($"Audio saved to: {savedPath}");
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("Save Failed", "Failed to save audio file.", "OK");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error saving audio: {e.Message}");
+            EditorUtility.DisplayDialog("Save Error", $"Error: {e.Message}", "OK");
+        }
+    }
+
+    private void ShowGeneratedAudioFiles()
+    {
+        var files = SatieAudioGen.Instance.GetGeneratedAudioFiles();
+
+        if (files.Count > 0)
+        {
+            string fileList = string.Join("\n", files.Take(10));
+            if (files.Count > 10)
+            {
+                fileList += $"\n... and {files.Count - 10} more";
+            }
+
+            EditorUtility.DisplayDialog("Generated Audio Files",
+                $"Found {files.Count} generated audio files:\n\n{fileList}", "OK");
+        }
+        else
+        {
+            EditorUtility.DisplayDialog("No Files Found",
+                "No generated audio files found in Assets/Resources/Audio/generation/", "OK");
+        }
     }
 
     private void DrawAdvancedSettings()

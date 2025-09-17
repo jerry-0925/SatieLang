@@ -81,3 +81,12 @@ crashlytics-build.properties
 /[Aa]ssets/openai_api_key.txt.meta
 /[Aa]ssets/*.key
 /[Aa]ssets/*.key.meta
+
+# macOS system files
+.DS_Store
+**/.DS_Store
+
+# Python virtual environments
+audioldm2_venv/
+*_venv/
+venv/
