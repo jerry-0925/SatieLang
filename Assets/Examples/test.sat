@@ -1,12 +1,10 @@
-4 * oneshot "bicycle/1to37" every 4to9:
-    volume = 0.3to0.7
-    move = walk, -12to12, -6to6, 0.8to2.0
-    visual = trail
-3 * oneshot "bicycle/1to37" every 8to15:
-    volume = 0.2to0.5
-    move = pos, -20to20, 0, -20to20
-    visual = sphere
-2 * oneshot "bicycle/1to37" every 12to20:
-    volume = 0.5to1.0
-    move = walk, -25to-15, -10to10, 1.5to3.0
+loop "ambience/forest":
+    volume = 0.05
+4 * oneshot "bird/1to7" every 3to7:
+    volume = 0.06to0.15
+    move = fly, -10to20, 4to12, -10to10, 1
+    visual = trail and sphere
+2 * oneshot "bird/1to7" every 8to14:
+    volume = 0.04to0.10
+    move = fly, -35to35, 8to18, -35to35, 0.3to0.7
     visual = trail
