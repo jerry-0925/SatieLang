@@ -9,6 +9,13 @@ using UnityEngine.Networking;
 
 namespace Satie
 {
+    public enum AudioProvider
+    {
+        AudioLDM2,
+        ElevenLabs,
+        Test
+    }
+
     [System.Serializable]
     public class AudioGenerationResult
     {
@@ -17,6 +24,7 @@ namespace Satie
         public byte[][] audioData;
         public int selectedIndex = -1;
         public string timestamp;
+        public AudioProvider provider;
     }
 
     public class SatieAudioGen : MonoBehaviour
@@ -37,9 +45,19 @@ namespace Satie
         }
 
         // API Configuration
-        private string apiUrl = "http://localhost:5001/generate"; // Local server URL for AudioLDM2
-        private int sampleRate = 44100;
-        private int numOptions = 2;
+        [Header("Server Configuration")]
+        [SerializeField] private string apiUrl = "http://localhost:5001/generate"; // Multi-provider audio server
+        [SerializeField] private int sampleRate = 44100;
+        [SerializeField] private int numOptions = 2;
+        [SerializeField] private AudioProvider defaultProvider = AudioProvider.AudioLDM2;
+
+        [Header("Eleven Labs Settings")]
+        [SerializeField] [Range(1f, 30f)] private float elevenLabsDuration = 10f;
+        [SerializeField] [Range(0f, 1f)] private float elevenLabsPromptInfluence = 0.3f;
+
+        [Header("AudioLDM2 Settings")]
+        [SerializeField] [Range(50, 500)] private int audioldm2InferenceSteps = 200;
+        [SerializeField] [Range(1f, 30f)] private float audioldm2Duration = 10f;
 
         // Cache for generated audio
         private Dictionary<string, AudioGenerationResult> generationCache = new Dictionary<string, AudioGenerationResult>();
@@ -55,7 +73,12 @@ namespace Satie
             DontDestroyOnLoad(gameObject);
         }
 
-        public async Task<AudioGenerationResult> GenerateAudioOptions(string prompt, int numOptions = 2, System.Action<AudioGenerationResult, int> onOptionGenerated = null)
+        public async Task<AudioGenerationResult> GenerateAudioOptions(string prompt, int numOptions = 2, AudioProvider? provider = null, System.Action<AudioGenerationResult, int> onOptionGenerated = null)
+        {
+            return await GenerateAudioOptionsInternal(prompt, numOptions, provider ?? defaultProvider, onOptionGenerated);
+        }
+
+        private async Task<AudioGenerationResult> GenerateAudioOptionsInternal(string prompt, int numOptions, AudioProvider provider, System.Action<AudioGenerationResult, int> onOptionGenerated)
         {
             if (string.IsNullOrWhiteSpace(prompt))
             {
@@ -63,11 +86,12 @@ namespace Satie
                 return null;
             }
 
-            // Check cache first
-            if (generationCache.ContainsKey(prompt))
+            // Check cache first (cache key includes provider)
+            string cacheKey = $"{provider}_{prompt}";
+            if (generationCache.ContainsKey(cacheKey))
             {
-                Debug.Log($"Returning cached audio for prompt: {prompt}");
-                return generationCache[prompt];
+                Debug.Log($"Returning cached audio for prompt: {prompt} (provider: {provider})");
+                return generationCache[cacheKey];
             }
 
             var result = new AudioGenerationResult
@@ -75,17 +99,18 @@ namespace Satie
                 prompt = prompt,
                 audioFilePaths = new string[numOptions],
                 audioData = new byte[numOptions][],
-                timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss")
+                timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss"),
+                provider = provider
             };
 
             try
             {
-                Debug.Log($"[AudioGen] Generating {numOptions} audio options for prompt: {prompt}");
+                Debug.Log($"[AudioGen] Generating {numOptions} audio options for prompt: {prompt} using {provider}");
 
                 for (int i = 0; i < numOptions; i++)
                 {
-                    // Generate audio using AudioLDM2 API
-                    byte[] audioData = await CallAudioLDM2API(prompt, i);
+                    // Generate audio using selected provider
+                    byte[] audioData = await CallAudioGenerationAPI(prompt, i, provider);
 
                     if (audioData != null && audioData.Length > 0)
                     {
@@ -101,8 +126,8 @@ namespace Satie
                     }
                 }
 
-                // Cache the result
-                generationCache[prompt] = result;
+                // Cache the result with provider-specific key
+                generationCache[cacheKey] = result;
                 return result;
             }
             catch (Exception e)
@@ -112,7 +137,7 @@ namespace Satie
             }
         }
 
-        private async Task<byte[]> CallAudioLDM2API(string prompt, int seed)
+        private async Task<byte[]> CallAudioGenerationAPI(string prompt, int seed, AudioProvider provider)
         {
             try
             {
@@ -122,12 +147,16 @@ namespace Satie
                     prompt = prompt,
                     seed = seed,
                     sample_rate = sampleRate,
-                    num_inference_steps = 200,
-                    audio_length_in_s = 10.0f
+                    num_inference_steps = audioldm2InferenceSteps,
+                    audio_length_in_s = audioldm2Duration,
+                    provider = provider.ToString().ToLower(),
+                    // Eleven Labs specific parameters
+                    duration_seconds = elevenLabsDuration,
+                    prompt_influence = elevenLabsPromptInfluence
                 };
 
                 string jsonRequest = JsonUtility.ToJson(requestData);
-                Debug.Log($"[AudioGen] Sending request to {apiUrl} with seed {seed}");
+                Debug.Log($"[AudioGen] Sending request to {apiUrl} with seed {seed} using provider {provider}");
 
                 using (UnityWebRequest request = new UnityWebRequest(apiUrl, "POST"))
                 {
@@ -153,9 +182,9 @@ namespace Satie
                         // Check if server is running
                         if (request.error.Contains("Cannot connect"))
                         {
-                            Debug.LogError("[AudioGen] Cannot connect to AudioLDM2 server. Please ensure the server is running:");
+                            Debug.LogError("[AudioGen] Cannot connect to audio generation server. Please ensure the server is running:");
                             Debug.LogError("[AudioGen] 1. Install requirements: pip install -r requirements.txt");
-                            Debug.LogError("[AudioGen] 2. Run server: python audioldm2_server.py");
+                            Debug.LogError("[AudioGen] 2. Run server: python audio_generation_server.py");
                         }
                         return null;
                     }
@@ -179,6 +208,10 @@ namespace Satie
             public int sample_rate;
             public int num_inference_steps;
             public float audio_length_in_s;
+            public string provider;
+            // Eleven Labs specific
+            public float duration_seconds;
+            public float prompt_influence;
         }
 
         public async Task<string> SaveSelectedAudio(AudioGenerationResult result, int selectedIndex)
@@ -197,9 +230,9 @@ namespace Satie
 
             try
             {
-                // Create filename based on prompt and timestamp
+                // Create filename based on prompt, provider and timestamp
                 string sanitizedPrompt = SanitizeFileName(result.prompt);
-                string fileName = $"{sanitizedPrompt}_{result.timestamp}_{selectedIndex}.wav";
+                string fileName = $"{sanitizedPrompt}_{result.provider}_{result.timestamp}_{selectedIndex}.wav";
                 string relativePath = Path.Combine("Assets", "Resources", "Audio", "generation", fileName);
                 string fullPath = Path.Combine(Application.dataPath, "Resources", "Audio", "generation", fileName);
 
@@ -395,6 +428,61 @@ namespace Satie
                 .ToList();
 
             return files;
+        }
+
+        public void SetDefaultProvider(AudioProvider provider)
+        {
+            defaultProvider = provider;
+            Debug.Log($"[AudioGen] Default provider set to: {provider}");
+        }
+
+        public AudioProvider GetDefaultProvider()
+        {
+            return defaultProvider;
+        }
+
+        public async Task<bool> CheckServerHealth()
+        {
+            try
+            {
+                string healthUrl = apiUrl.Replace("/generate", "/health");
+                using (UnityWebRequest request = UnityWebRequest.Get(healthUrl))
+                {
+                    var operation = request.SendWebRequest();
+
+                    while (!operation.isDone)
+                    {
+                        await Task.Yield();
+                    }
+
+                    if (request.result == UnityWebRequest.Result.Success)
+                    {
+                        Debug.Log($"[AudioGen] Server health check: {request.downloadHandler.text}");
+                        return true;
+                    }
+                    else
+                    {
+                        Debug.LogError($"[AudioGen] Server health check failed: {request.error}");
+                        return false;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[AudioGen] Health check error: {e.Message}");
+                return false;
+            }
+        }
+
+        public void SetApiUrl(string url)
+        {
+            apiUrl = url;
+            Debug.Log($"[AudioGen] API URL set to: {url}");
+        }
+
+        public string GetApiUrl()
+        {
+            return apiUrl;
         }
     }
 }
