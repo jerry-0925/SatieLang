@@ -1,0 +1,14 @@
+# Test script for interpolation functionality
+
+# Basic fade in effect (replaces old fade_in)
+loop "music/beat":
+    volume = 1
+    pitch = interpolate(0.5and1 as sine in 2 for ever)
+    move = fly, -10to11, -9to12, -11to20, 1to3
+    visual = sphere
+
+loop "music/drone":
+    volume = 1
+    pitch = interpolate(0.1and2 as sineOut in 5 for ever)
+    move = fly, -10to11, -9to12, -11to20, 1to3
+    visual = sphere and trail
