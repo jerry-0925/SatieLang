@@ -318,15 +318,14 @@ public class SatieAICodeGenEditor : Editor
             // The TextAsset reference should automatically update since we're modifying the same file
             Debug.Log($"Updated script file: {path}");
 
-            // Trigger sync if in play mode
+            // Trigger sync/recompile if in play mode (equivalent to Shift+R)
             if (Application.isPlaying)
             {
                 Debug.Log("Triggering runtime sync...");
                 runtime.Sync(fullReset: true);
             }
 
-            EditorUtility.DisplayDialog("Code Applied",
-                $"Generated code has been applied to: {System.IO.Path.GetFileName(path)}", "OK");
+            Debug.Log($"Generated code applied to: {System.IO.Path.GetFileName(path)}");
         }
         catch (System.Exception e)
         {

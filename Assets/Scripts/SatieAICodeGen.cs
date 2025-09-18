@@ -77,29 +77,20 @@ namespace Satie
         private HttpClient httpClient;
         private string cachedResourceInfo;
         private float lastResourceScanTime = -1f;
-        private const float RESOURCE_CACHE_DURATION = 300f; // 5 minutes
+        private const float RESOURCE_CACHE_DURATION = 30f; // 30 seconds for faster updates after generation
         
         // Conversation context for follow-up editing
         private ConversationHistory currentConversation;
         private bool isEditMode = false;
 
-        private const string SYSTEM_PROMPT = "Output ONLY valid Satie code. No markdown or explanations.\n\n" +
+        private const string SYSTEM_PROMPT_BASE = "Output ONLY valid Satie code. No markdown or explanations.\n\n" +
             "SYNTAX RULES:\n" +
             "- ALWAYS add colon: loop \"clip\": or oneshot \"clip\":\n" +
             "- Birds/footsteps/bicycles: oneshot with \"every\"\n" +
             "- Ambience/music: loop\n" +
             "- Move: walk,x,z,speed OR fly,x,y,z,speed OR pos,x,y,z\n" +
             "- Visual: sphere OR trail OR \"sphere and trail\" (NOT true/false)\n" +
-            "- NO 'overlap' with multiplied oneshots\n\n" +
-            "AVAILABLE AUDIO:\n" +
-            "voice/1-40, conversation/people, bird/1-7, ambience/forest, music/beat, bicycle/1-37, footsteps/1-36\n\n" +
-            "EXAMPLE:\n" +
-            "loop \"ambience/forest\":\n" +
-            "    volume = 0.3\n" +
-            "5 * oneshot \"bird/1to4\" every 2to5:\n" +
-            "    volume = 0.1to0.3\n" +
-            "    move = fly, -10to10, 0to10, -10to10, 0.5\n" +
-            "    visual = trail";
+            "- NO 'overlap' with multiplied oneshots\n\n";
 
         void Awake()
         {
@@ -110,7 +101,7 @@ namespace Satie
             }
             instance = this;
             DontDestroyOnLoad(gameObject);
-            
+
             // Configure HttpClient for performance
             httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(120); // Increased for AI requests
@@ -127,6 +118,87 @@ namespace Satie
             
             // Pre-cache resource info
             _ = RefreshResourceCache();
+        }
+
+        // Force re-indexing when called (e.g., after audio generation)
+        public void InvalidateAudioCache()
+        {
+            lastResourceScanTime = -1f;
+            cachedResourceInfo = null;
+            Debug.Log("[AI] Audio cache invalidated - will re-index on next generation");
+        }
+
+        private async Task<string> GetDynamicAudioLibrary()
+        {
+            // Check if we need to rescan (cache expired or not cached)
+            if (Time.time - lastResourceScanTime > RESOURCE_CACHE_DURATION || string.IsNullOrEmpty(cachedResourceInfo))
+            {
+                cachedResourceInfo = await ScanAudioResources();
+                lastResourceScanTime = Time.time;
+                Debug.Log($"[AI] Re-indexed audio library");
+            }
+            return cachedResourceInfo;
+        }
+
+        private async Task<string> ScanAudioResources()
+        {
+            return await Task.Run(() =>
+            {
+                var audioList = new System.Text.StringBuilder();
+                audioList.AppendLine("AVAILABLE AUDIO:");
+
+                string audioPath = Path.Combine(Application.dataPath, "Resources", "Audio");
+
+                if (Directory.Exists(audioPath))
+                {
+                    // Scan main audio folders
+                    var directories = Directory.GetDirectories(audioPath);
+                    foreach (var dir in directories)
+                    {
+                        string dirName = Path.GetFileName(dir);
+                        var files = Directory.GetFiles(dir, "*.wav", SearchOption.AllDirectories)
+                            .Concat(Directory.GetFiles(dir, "*.mp3", SearchOption.AllDirectories))
+                            .Concat(Directory.GetFiles(dir, "*.ogg", SearchOption.AllDirectories));
+
+                        if (files.Any())
+                        {
+                            var fileNames = files.Select(f => Path.GetFileNameWithoutExtension(f))
+                                .OrderBy(n => n)
+                                .ToList();
+
+                            // Group numbered files
+                            var numbered = fileNames.Where(f => Regex.IsMatch(f, @"^\d+$"))
+                                .Select(int.Parse)
+                                .OrderBy(n => n)
+                                .ToList();
+
+                            var named = fileNames.Where(f => !Regex.IsMatch(f, @"^\d+$")).ToList();
+
+                            if (numbered.Any())
+                            {
+                                audioList.Append($"{dirName}/1-{numbered.Max()}");
+                                if (named.Any())
+                                    audioList.Append($", {dirName}/" + string.Join($", {dirName}/", named));
+                            }
+                            else if (named.Any())
+                            {
+                                audioList.Append($"{dirName}/" + string.Join($", {dirName}/", named));
+                            }
+                            audioList.AppendLine();
+                        }
+                    }
+                }
+
+                audioList.AppendLine("\nEXAMPLE:");
+                audioList.AppendLine("loop \"ambience/forest\":");
+                audioList.AppendLine("    volume = 0.3");
+                audioList.AppendLine("5 * oneshot \"bird/1to4\" every 2to5:");
+                audioList.AppendLine("    volume = 0.1to0.3");
+                audioList.AppendLine("    move = fly, -10to10, 0to10, -10to10, 0.5");
+                audioList.AppendLine("    visual = trail");
+
+                return audioList.ToString();
+            });
         }
 
         void OnDestroy()
@@ -204,8 +276,12 @@ namespace Satie
 
             try
             {
+                // Get current audio library
+                string audioLibrary = await GetDynamicAudioLibrary();
+                string fullSystemPrompt = SYSTEM_PROMPT_BASE + audioLibrary;
+
                 // Standard chat completion format for GPT-5 and other models
-                string systemPromptEscaped = EscapeJsonString(SYSTEM_PROMPT);
+                string systemPromptEscaped = EscapeJsonString(fullSystemPrompt);
                 string userPromptEscaped = EscapeJsonString(prompt);
                 
                 string jsonBody = $@"{{
@@ -331,13 +407,9 @@ namespace Satie
         public async Task<string> GenerateWithResourceAwareness(string prompt)
         {
             // Use cached resource info or scan if needed
-            string resourceInfo = await GetCachedResourceInfo();
-            
-            // Enhanced system prompt with current resource info
-            string enhancedSystemPrompt = SYSTEM_PROMPT.Replace(
-                "AVAILABLE AUDIO ONLY:\nvoice/1 to voice/40\nconversation/people, conversation/hello\nbird/1 to bird/7, bird/1to4, bird/1to7\nambience/forest, ambience/lab\nmusic/beat\nbicycle/1 to bicycle/37\nfootsteps/1 to footsteps/36",
-                $"AVAILABLE AUDIO (CURRENT SCAN):\n{resourceInfo}"
-            );
+            // Get current audio library
+            string audioLibrary = await GetDynamicAudioLibrary();
+            string enhancedSystemPrompt = SYSTEM_PROMPT_BASE + audioLibrary;
             
             // Use enhanced prompt for generation
             return await GenerateSatieCodeWithCustomSystem(prompt, enhancedSystemPrompt);
@@ -785,10 +857,10 @@ namespace Satie
                 
                 // Build conversation context
                 string conversationContext = BuildConversationContext();
-                
+
                 // Create edit-specific system prompt
-                string editSystemPrompt = CreateEditSystemPrompt(resourceInfo, currentScript);
-                
+                string editSystemPrompt = await CreateEditSystemPrompt(currentScript);
+
                 // Generate with conversation context
                 return await GenerateSatieCodeWithConversation(prompt, editSystemPrompt, conversationContext);
             }
@@ -820,12 +892,11 @@ namespace Satie
             return context.ToString();
         }
 
-        private string CreateEditSystemPrompt(string resourceInfo, string currentScript)
+        private async Task<string> CreateEditSystemPrompt(string currentScript)
         {
-            string baseSystemPrompt = SYSTEM_PROMPT.Replace(
-                "voice/1-40, conversation/people, bird/1-7, ambience/forest, music/beat, bicycle/1-37, footsteps/1-36",
-                resourceInfo
-            );
+            // Get current audio library
+            string audioLibrary = await GetDynamicAudioLibrary();
+            string baseSystemPrompt = SYSTEM_PROMPT_BASE + audioLibrary;
 
             string editPrompt = baseSystemPrompt + "\n\n" +
                 "EDIT MODE: Make ONLY requested changes. Output COMPLETE modified script.\n\n";

@@ -419,6 +419,14 @@ public class SatieAudioGenEditor : Editor
                 {
                     Debug.Log($"Audio saved and can be used in Satie scripts: {savedPath}");
                 }
+
+                // Invalidate AI code gen cache so it re-indexes the audio library
+                var aiCodeGen = FindObjectOfType<SatieAICodeGen>();
+                if (aiCodeGen != null)
+                {
+                    aiCodeGen.InvalidateAudioCache();
+                    Debug.Log("[AudioGen] Notified AI Code Gen to re-index audio library");
+                }
             }
         }
         catch (Exception e)
