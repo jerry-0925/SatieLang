@@ -7,6 +7,8 @@ public class InterpolatedAudioSource : MonoBehaviour
     private InterpolationManager interpolationManager;
     private float baseVolume = 1f;
     private float basePitch = 1f;
+    private float childVolumeMultiplier = 1f;
+    private float childPitchMultiplier = 1f;
 
     void Awake()
     {
@@ -16,31 +18,34 @@ public class InterpolatedAudioSource : MonoBehaviour
 
     public void SetupInterpolations(Statement stmt)
     {
-        baseVolume = stmt.volume.Sample();
-        basePitch = stmt.pitch.Sample();
+        childVolumeMultiplier = stmt.volume.Sample();
+        childPitchMultiplier = stmt.pitch.Sample();
+
+        baseVolume = 1f;
+        basePitch = 1f;
 
         interpolationManager.SetBaseValues(baseVolume, basePitch);
 
         if (stmt.volumeInterpolation != null)
         {
-            interpolationManager.volumeInterp = stmt.volumeInterpolation;
+            interpolationManager.volumeInterp = stmt.volumeInterpolation.CreateCopy();
         }
 
         if (stmt.pitchInterpolation != null)
         {
-            interpolationManager.pitchInterp = stmt.pitchInterpolation;
+            interpolationManager.pitchInterp = stmt.pitchInterpolation.CreateCopy();
         }
 
-        audioSource.volume = baseVolume;
-        audioSource.pitch = basePitch;
+        audioSource.volume = childVolumeMultiplier;
+        audioSource.pitch = childPitchMultiplier;
     }
 
     void Update()
     {
         if (audioSource && interpolationManager != null)
         {
-            audioSource.volume = interpolationManager.GetVolume(Time.deltaTime);
-            audioSource.pitch = interpolationManager.GetPitch(Time.deltaTime);
+            audioSource.volume = interpolationManager.GetVolume(Time.deltaTime) * childVolumeMultiplier;
+            audioSource.pitch = interpolationManager.GetPitch(Time.deltaTime) * childPitchMultiplier;
         }
     }
 

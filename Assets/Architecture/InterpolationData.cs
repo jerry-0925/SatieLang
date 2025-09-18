@@ -4,6 +4,10 @@ namespace Satie
 {
     public class InterpolationData
     {
+        public RangeOrValue minRange;
+        public RangeOrValue maxRange;
+        public RangeOrValue durationRange;
+        public string easeName;
         public float minValue;
         public float maxValue;
         public EaseFunctions.EaseFunction easeFunction;
@@ -14,12 +18,19 @@ namespace Satie
         public int currentRepeat;
         public bool isActive;
 
-        public InterpolationData(float min, float max, string easeName, float dur, int count = 1, bool forever = false)
+        public InterpolationData(RangeOrValue min, RangeOrValue max, string easeName, RangeOrValue dur, int count = 1, bool forever = false)
         {
-            minValue = min;
-            maxValue = max;
+            minRange = min;
+            maxRange = max;
+            durationRange = dur;
+            this.easeName = easeName;
+
+            // Sample initial values
+            minValue = min.Sample();
+            maxValue = max.Sample();
+            duration = dur.Sample();
+
             easeFunction = EaseFunctions.GetEaseFunction(easeName);
-            duration = dur;
             repeatCount = count;
             isForever = forever;
             currentTime = 0f;
@@ -45,6 +56,10 @@ namespace Satie
                         return maxValue;
                     }
                 }
+                // Re-sample values for next cycle
+                minValue = minRange.Sample();
+                maxValue = maxRange.Sample();
+                duration = durationRange.Sample();
             }
 
             float t = currentTime / duration;
@@ -57,22 +72,31 @@ namespace Satie
             currentTime = 0f;
             currentRepeat = 0;
             isActive = true;
+            // Re-sample values on reset
+            minValue = minRange.Sample();
+            maxValue = maxRange.Sample();
+            duration = durationRange.Sample();
+        }
+
+        public InterpolationData CreateCopy()
+        {
+            return new InterpolationData(minRange, maxRange, easeName, durationRange, repeatCount, isForever);
         }
 
         public static InterpolationData Parse(string interpolateStr)
         {
             if (string.IsNullOrWhiteSpace(interpolateStr)) return null;
 
-            var pattern = @"interpolate\s*\(\s*(?<min>[\d.]+)\s*and\s*(?<max>[\d.]+)\s+as\s+(?<ease>\w+)\s+in\s+(?<dur>[\d.]+)(?:\s+for\s+(?<count>ever|\d+))?\s*\)";
+            var pattern = @"interpolate\s*\(\s*(?<min>[\d.]+(?:to[\d.]+)?)\s*and\s*(?<max>[\d.]+(?:to[\d.]+)?)\s+as\s+(?<ease>\w+)\s+in\s+(?<dur>[\d.]+(?:to[\d.]+)?)\s*(?:\s+for\s+(?<count>ever|\d+))?\s*\)";
             var regex = new System.Text.RegularExpressions.Regex(pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             var match = regex.Match(interpolateStr);
 
             if (!match.Success) return null;
 
-            float min = float.Parse(match.Groups["min"].Value);
-            float max = float.Parse(match.Groups["max"].Value);
+            RangeOrValue min = RangeOrValue.Parse(match.Groups["min"].Value);
+            RangeOrValue max = RangeOrValue.Parse(match.Groups["max"].Value);
             string easeName = match.Groups["ease"].Value;
-            float duration = float.Parse(match.Groups["dur"].Value);
+            RangeOrValue duration = RangeOrValue.Parse(match.Groups["dur"].Value);
 
             bool forever = false;
             int count = 1;
