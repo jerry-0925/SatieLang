@@ -1,41 +1,10 @@
-# Satie Script - Ode to Monks with MacBooks
-
-group forest:
-fade_in = 10
-    loop "ambience/forest":
-        volume = 0.05
-    loop "ambience/rain":
-        volume = 0.03
-        pitch = 1
-    loop "ambience/water":
-        fade_in = 20
-        volume = 0.05
-        move = walk, -10to10, -15to20, 1
-        visual = trail
-
-
-group music:
-fade_in = 30
-volume = 1
-    3 * oneshot "musical phrases/1to3" every 10to15:
-        volume = 0.08
-        pitch = 0.5
-        move = fly, -10to10, 0to10, -5to6, 1to1.3
-        visual = cube and trail
-    loop "music/drone":
-        volume = 0.2
-        pitch = 0.5
-        fade_in = 20
-    1 * oneshot "musical phrases/9to13" every 15to30:
-        volume = 0.2
-        move = fly, -20to10, 0to10, -5to6, 1to2
-        visual = sphere
-
-
-group birds:
-fade_in = 20
-     2 * oneshot "bird/1to4" every 10to15:
-        volume = 0.01to0.05
-        pitch = 0.7to1.3
-        move = fly, -20to10, 0to10, -5to6, 1to2
-        visual = object "1to3"
+loop "ambience/forest":
+    volume = 0.25
+4 * oneshot "bird/1to7" every 2to5:
+    volume = 0.12to0.28
+    move = fly, -20to20, 3to12, -20to20, 0.5to1.1
+    visual = trail
+3 * oneshot "bird/1to7" every 1to3:
+    volume = 0.18to0.35
+    move = fly, -10to10, 1to8, -10to10, 0.8to1.5
+    visual = sphere

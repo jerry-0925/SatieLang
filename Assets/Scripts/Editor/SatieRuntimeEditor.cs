@@ -16,8 +16,7 @@ public class SatieRuntimeEditor : Editor
     private bool hasAudioGen = false;
     private bool hasSpatialAudio = false;
 
-    // Runtime controls
-    private bool showRuntimeControls = true;
+    // UI state
     private bool showScriptPreview = false;
 
     // UI styles
@@ -38,14 +37,14 @@ public class SatieRuntimeEditor : Editor
         InitStyles();
 
         DrawHeader();
-        DrawComponentSetup();
         DrawScriptConfiguration();
-        DrawRuntimeControls();
 
         if (runtime.ScriptFile != null)
         {
             DrawScriptPreview();
         }
+
+        DrawComponentSetup();
 
         serializedObject.ApplyModifiedProperties();
     }
@@ -184,71 +183,6 @@ public class SatieRuntimeEditor : Editor
     }
 
 
-    private void DrawRuntimeControls()
-    {
-        showRuntimeControls = EditorGUILayout.Foldout(showRuntimeControls, "Runtime Controls", true);
-
-        if (showRuntimeControls)
-        {
-            EditorGUI.indentLevel++;
-
-            if (Application.isPlaying)
-            {
-                DrawPlayModeControls();
-            }
-            else
-            {
-                DrawEditModeControls();
-            }
-
-            EditorGUI.indentLevel--;
-        }
-
-        EditorGUILayout.Space(5);
-    }
-
-    private void DrawPlayModeControls()
-    {
-        EditorGUILayout.BeginHorizontal();
-
-        if (GUILayout.Button("🔄 Soft Reload (R)", GUILayout.Height(25)))
-        {
-            runtime.Sync(fullReset: false);
-        }
-
-        if (GUILayout.Button("🔄 Hard Reset (Shift+R)", GUILayout.Height(25)))
-        {
-            runtime.Sync(fullReset: true);
-        }
-
-        EditorGUILayout.EndHorizontal();
-
-        EditorGUILayout.Space(5);
-        EditorGUILayout.HelpBox(
-            "Runtime Shortcuts:\n" +
-            "• R - Soft reload (keeps existing audio)\n" +
-            "• Shift+R - Hard reset (stops all audio)",
-            MessageType.Info);
-    }
-
-    private void DrawEditModeControls()
-    {
-        EditorGUI.BeginDisabledGroup(runtime.ScriptFile == null);
-
-        if (GUILayout.Button("▶ Preview in Play Mode", GUILayout.Height(25)))
-        {
-            EditorApplication.isPlaying = true;
-        }
-
-        EditorGUI.EndDisabledGroup();
-
-        if (runtime.ScriptFile == null)
-        {
-            EditorGUILayout.HelpBox(
-                "Assign a script file to preview the audio experience.",
-                MessageType.Info);
-        }
-    }
 
     private void DrawScriptPreview()
     {

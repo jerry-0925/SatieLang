@@ -24,14 +24,7 @@ public class SatieSpatialAudioEditor : Editor
         EditorGUILayout.LabelField("Spatial Audio Configuration", EditorStyles.boldLabel);
         EditorGUILayout.Space(5);
 
-        // Status section
-        DrawStatusSection();
-
-        EditorGUILayout.Space(10);
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        EditorGUILayout.Space(5);
-
-        // Basic settings
+        // Basic settings (first)
         DrawBasicSettings();
 
         // Default spatial settings
@@ -41,8 +34,15 @@ public class SatieSpatialAudioEditor : Editor
         DrawAdvancedFeatures();
 
         EditorGUILayout.Space(10);
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+        EditorGUILayout.Space(5);
 
-        // Action buttons
+        // Status section
+        DrawStatusSection();
+
+        EditorGUILayout.Space(10);
+
+        // Action buttons (last)
         DrawActionButtons();
 
         serializedObject.ApplyModifiedProperties();
