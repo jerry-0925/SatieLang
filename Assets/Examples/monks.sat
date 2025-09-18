@@ -1,10 +1,14 @@
 loop "ambience/forest":
     volume = 0.25
 4 * oneshot "bird/1to7" every 2to5:
-    volume = 0.12to0.28
+    volume = 0.08to0.2
     move = fly, -20to20, 3to12, -20to20, 0.5to1.1
     visual = trail
 3 * oneshot "bird/1to7" every 1to3:
-    volume = 0.18to0.35
+    volume = 0.12to0.25
     move = fly, -10to10, 1to8, -10to10, 0.8to1.5
+    visual = sphere
+loop "music/drone":
+    volume = 0.06to0.12
+    move = fly, -12to12, 2to7, -12to12, 0.2to0.4
     visual = sphere

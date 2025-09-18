@@ -14,7 +14,6 @@ public class SatieAICodeGenEditor : Editor
     private bool isGeneratingCode = false;
     private string lastGeneratedCode = "";
     private string lastPrompt = "";
-    private bool editMode = false;
 
     // Editor foldouts
     private bool showAdvancedSettings = false;
@@ -23,6 +22,15 @@ public class SatieAICodeGenEditor : Editor
     void OnEnable()
     {
         aiGen = (SatieAICodeGen)target;
+
+        // Always enable edit mode to maintain context
+        var runtime = FindObjectOfType<SatieRuntime>();
+        string currentScript = "";
+        if (runtime != null && runtime.ScriptFile != null)
+        {
+            currentScript = runtime.ScriptFile.text;
+        }
+        aiGen.SetEditMode(true, currentScript);
     }
 
     public override void OnInspectorGUI()
@@ -35,11 +43,8 @@ public class SatieAICodeGenEditor : Editor
         // Generation section (prompt first)
         DrawGenerationSection();
 
-        // Edit mode and conversation history
-        if (editMode)
-        {
-            DrawEditModeSection();
-        }
+        // Conversation history (always show since we're always in edit mode)
+        DrawConversationSection();
 
         // Results section
         if (!string.IsNullOrEmpty(lastGeneratedCode))
@@ -95,15 +100,6 @@ public class SatieAICodeGenEditor : Editor
     {
         EditorGUILayout.LabelField("Generate Satie Code", EditorStyles.boldLabel);
 
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Edit Mode:", GUILayout.Width(80));
-        bool newEditMode = EditorGUILayout.Toggle(editMode);
-        if (newEditMode != editMode)
-        {
-            SetEditMode(newEditMode);
-        }
-        EditorGUILayout.EndHorizontal();
-
         EditorGUILayout.LabelField("Prompt:");
         aiPrompt = EditorGUILayout.TextArea(aiPrompt, GUILayout.Height(60));
 
@@ -128,10 +124,8 @@ public class SatieAICodeGenEditor : Editor
         }
     }
 
-    private void DrawEditModeSection()
+    private void DrawConversationSection()
     {
-        if (!aiGen.IsInEditMode()) return;
-
         EditorGUILayout.Space(10);
 
         showConversationHistory = EditorGUILayout.Foldout(showConversationHistory, "Conversation History", true);
@@ -163,20 +157,11 @@ public class SatieAICodeGenEditor : Editor
         EditorGUILayout.EndScrollView();
         EditorGUILayout.EndVertical();
 
-        EditorGUILayout.BeginHorizontal();
-
-        if (GUILayout.Button("Copy to Clipboard", GUILayout.Height(25)))
-        {
-            GUIUtility.systemCopyBuffer = lastGeneratedCode;
-            Debug.Log("Generated code copied to clipboard");
-        }
-
-        if (GUILayout.Button("Apply to Runtime", GUILayout.Height(25)))
+        // Only show Apply to Runtime button
+        if (GUILayout.Button("Apply to Runtime", GUILayout.Height(30)))
         {
             ApplyGeneratedCode();
         }
-
-        EditorGUILayout.EndHorizontal();
 
         // RLHF Feedback
         if (aiGen.config.enableRLHF && !string.IsNullOrEmpty(lastGeneratedCode))
@@ -302,64 +287,46 @@ public class SatieAICodeGenEditor : Editor
 
         try
         {
-            // Create or update the script file
-            string path = $"Assets/Generated/generated_{DateTime.Now:yyyyMMdd_HHmmss}.sp";
-            string directory = System.IO.Path.GetDirectoryName(path);
-
-            Debug.Log($"Creating file at: {path}");
-
-            if (!System.IO.Directory.Exists(directory))
+            // Check if runtime has a script file assigned
+            if (runtime.ScriptFile == null)
             {
-                System.IO.Directory.CreateDirectory(directory);
-                Debug.Log($"Created directory: {directory}");
+                EditorUtility.DisplayDialog("No Script File",
+                    "Please assign a .sat script file to the SatieRuntime component first.", "OK");
+                return;
             }
 
+            // Get the path of the current script file
+            string path = AssetDatabase.GetAssetPath(runtime.ScriptFile);
+
+            if (string.IsNullOrEmpty(path))
+            {
+                Debug.LogError("Could not get asset path for script file");
+                return;
+            }
+
+            Debug.Log($"Updating existing script file at: {path}");
+
+            // Write the generated code to the existing file
             System.IO.File.WriteAllText(path, lastGeneratedCode);
             Debug.Log($"Wrote {lastGeneratedCode.Length} characters to file");
 
+            // Refresh the asset database to reload the file
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
             AssetDatabase.Refresh();
             Debug.Log("AssetDatabase refreshed");
 
-            // Wait a frame for asset database to process
-            EditorApplication.delayCall += () => {
-                // Assign to runtime
-                TextAsset scriptAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
-                if (scriptAsset != null)
-                {
-                    Debug.Log($"Successfully loaded TextAsset: {scriptAsset.name}");
+            // The TextAsset reference should automatically update since we're modifying the same file
+            Debug.Log($"Updated script file: {path}");
 
-                    SerializedObject runtimeSO = new SerializedObject(runtime);
-                    SerializedProperty scriptProp = runtimeSO.FindProperty("scriptFile");
+            // Trigger sync if in play mode
+            if (Application.isPlaying)
+            {
+                Debug.Log("Triggering runtime sync...");
+                runtime.Sync(fullReset: true);
+            }
 
-                    if (scriptProp != null)
-                    {
-                        scriptProp.objectReferenceValue = scriptAsset;
-                        runtimeSO.ApplyModifiedProperties();
-
-                        Debug.Log($"Applied generated code to SatieRuntime: {path}");
-
-                        // Trigger sync if in play mode
-                        if (Application.isPlaying)
-                        {
-                            Debug.Log("Triggering runtime sync...");
-                            runtime.Sync(fullReset: true);
-                        }
-
-                        EditorUtility.DisplayDialog("Code Applied",
-                            $"Generated code has been applied to {runtime.gameObject.name}\n\nFile: {path}", "OK");
-                    }
-                    else
-                    {
-                        Debug.LogError("Could not find 'scriptFile' property on SatieRuntime");
-                    }
-                }
-                else
-                {
-                    Debug.LogError($"Failed to load TextAsset at path: {path}");
-                    EditorUtility.DisplayDialog("Apply Failed",
-                        $"Could not load the generated script file.\n\nExpected path: {path}", "OK");
-                }
-            };
+            EditorUtility.DisplayDialog("Code Applied",
+                $"Generated code has been applied to: {System.IO.Path.GetFileName(path)}", "OK");
         }
         catch (System.Exception e)
         {
@@ -400,27 +367,4 @@ public class SatieAICodeGenEditor : Editor
             $"Thank you! Your {feedbackText} feedback has been recorded.", "OK");
     }
 
-    private void SetEditMode(bool enabled)
-    {
-        editMode = enabled;
-
-        string currentScript = "";
-        var runtime = FindObjectOfType<SatieRuntime>();
-        if (runtime != null && runtime.ScriptFile != null)
-        {
-            currentScript = runtime.ScriptFile.text;
-        }
-
-        aiGen.SetEditMode(enabled, currentScript);
-
-        if (enabled)
-        {
-            Debug.Log("[AI] Edit mode enabled - AI will maintain context for follow-up edits");
-        }
-        else
-        {
-            Debug.Log("[AI] Edit mode disabled - Starting fresh conversation");
-            aiGen.StartNewConversation();
-        }
-    }
 }
