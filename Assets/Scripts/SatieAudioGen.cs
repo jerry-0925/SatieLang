@@ -48,8 +48,8 @@ namespace Satie
         [Header("Server Configuration")]
         [SerializeField] private string apiUrl = "http://localhost:5001/generate"; // Multi-provider audio server
         [SerializeField] private int sampleRate = 44100;
-        [SerializeField] private int numOptions = 2;
-        [SerializeField] private AudioProvider defaultProvider = AudioProvider.AudioLDM2;
+        [SerializeField] private int numOptions = 1;
+        [SerializeField] private AudioProvider defaultProvider = AudioProvider.ElevenLabs;
 
         [Header("Eleven Labs Settings")]
         [SerializeField] [Range(1f, 30f)] private float elevenLabsDuration = 10f;
@@ -230,9 +230,12 @@ namespace Satie
 
             try
             {
-                // Create filename based on prompt, provider and timestamp
+                // Create filename based on prompt only (cleaner naming)
                 string sanitizedPrompt = SanitizeFileName(result.prompt);
-                string fileName = $"{sanitizedPrompt}_{result.provider}_{result.timestamp}_{selectedIndex}.wav";
+                // Limit prompt to first 30 characters for cleaner names
+                if (sanitizedPrompt.Length > 30)
+                    sanitizedPrompt = sanitizedPrompt.Substring(0, 30);
+                string fileName = $"{sanitizedPrompt}.wav";
                 string relativePath = Path.Combine("Assets", "Resources", "Audio", "generation", fileName);
                 string fullPath = Path.Combine(Application.dataPath, "Resources", "Audio", "generation", fileName);
 
