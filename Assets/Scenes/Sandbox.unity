@@ -348,7 +348,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1228820744}
   - component: {fileID: 1228820743}
-  - component: {fileID: 1228820746}
+  - component: {fileID: 1228820748}
   - component: {fileID: 1228820745}
   - component: {fileID: 1228820747}
   m_Layer: 0
@@ -400,31 +400,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   apiUrl: http://localhost:5001/generate
   sampleRate: 44100
-  numOptions: 2
+  numOptions: 1
   defaultProvider: 1
   elevenLabsDuration: 10
   elevenLabsPromptInfluence: 0.3
   audioldm2InferenceSteps: 200
   audioldm2Duration: 10
---- !u!114 &1228820746
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1228820742}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7336cd169844449a2b049511d789d57c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  config:
-    apiKeyPath: api_key.txt
-    model: gpt-5
-    temperature: 1
-    maxTokens: 4000
-    enableRLHF: 1
-    rlhfDataPath: rlhf_feedback.json
 --- !u!114 &1228820747
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -448,52 +429,22 @@ MonoBehaviour:
   enableOcclusion: 0
   enableTransmission: 0
   enableReflections: 0
---- !u!1 &1432136003
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1432136005}
-  - component: {fileID: 1432136004}
-  m_Layer: 0
-  m_Name: Steam Audio Manager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1432136004
+--- !u!114 &1228820748
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1432136003}
+  m_GameObject: {fileID: 1228820742}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b11066ff95bbf3344b868394742f7002, type: 3}
+  m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6789012345678abcdef01, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  currentHRTF: 0
-  hrtfNames: []
---- !u!4 &1432136005
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1432136003}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  assistantId: asst_t1EGraBUBJdQBxO2jqIx2M7U
+  vectorStoreId: vs_68cc3703814081919a1caee5e8287890
+  assistantName: Satie Code Generator
+  model: gpt-4-turbo-preview
 --- !u!1 &1548540153
 GameObject:
   m_ObjectHideFlags: 0
@@ -527,10 +478,56 @@ Transform:
   - {fileID: 705507995}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1642319777
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1642319779}
+  - component: {fileID: 1642319778}
+  m_Layer: 0
+  m_Name: Steam Audio Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1642319778
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1642319777}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b11066ff95bbf3344b868394742f7002, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentHRTF: 0
+  hrtfNames: []
+--- !u!4 &1642319779
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1642319777}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1548540154}
   - {fileID: 1228820744}
-  - {fileID: 1432136005}
+  - {fileID: 1642319779}
