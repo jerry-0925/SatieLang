@@ -32,14 +32,7 @@ public class SatieAICodeGenEditor : Editor
         EditorGUILayout.LabelField("AI Code Generation", EditorStyles.boldLabel);
         EditorGUILayout.Space(5);
 
-        // Configuration section
-        DrawConfigurationSection();
-
-        EditorGUILayout.Space(10);
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        EditorGUILayout.Space(5);
-
-        // Generation section
+        // Generation section (prompt first)
         DrawGenerationSection();
 
         // Edit mode and conversation history
@@ -53,6 +46,13 @@ public class SatieAICodeGenEditor : Editor
         {
             DrawResultsSection();
         }
+
+        EditorGUILayout.Space(10);
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+        EditorGUILayout.Space(5);
+
+        // Configuration section (moved to end)
+        DrawConfigurationSection();
 
         serializedObject.ApplyModifiedProperties();
     }

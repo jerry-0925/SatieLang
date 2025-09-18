@@ -44,19 +44,7 @@ public class SatieAudioGenEditor : Editor
         EditorGUILayout.LabelField("Audio Generation", EditorStyles.boldLabel);
         EditorGUILayout.Space(5);
 
-        // Server configuration
-        DrawServerConfiguration();
-
-        EditorGUILayout.Space(5);
-
-        // Provider settings
-        DrawProviderSettings();
-
-        EditorGUILayout.Space(10);
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-        EditorGUILayout.Space(5);
-
-        // Generation interface
+        // Generation interface (prompt first)
         DrawGenerationInterface();
 
         // Show current generation results
@@ -69,6 +57,18 @@ public class SatieAudioGenEditor : Editor
 
         // Show generated files
         DrawGeneratedFiles();
+
+        EditorGUILayout.Space(10);
+        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+        EditorGUILayout.Space(5);
+
+        // Provider settings
+        DrawProviderSettings();
+
+        EditorGUILayout.Space(5);
+
+        // Server configuration (moved to end)
+        DrawServerConfiguration();
 
         serializedObject.ApplyModifiedProperties();
     }

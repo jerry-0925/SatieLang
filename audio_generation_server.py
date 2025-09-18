@@ -202,24 +202,42 @@ class AudioGenerationServer:
             response = requests.post(url, json=data, headers=headers)
 
             if response.status_code != 200:
-                raise Exception(f"Eleven Labs API error: {response.status_code} - {response.text}")
+                error_msg = f"Eleven Labs API error: {response.status_code} - {response.text}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
 
             # Convert MP3 to WAV
             mp3_data = response.content
 
+            if not mp3_data or len(mp3_data) == 0:
+                raise Exception("Eleven Labs returned empty audio data")
+
             # Use pydub to convert MP3 to WAV
             try:
                 from pydub import AudioSegment
+                logger.info(f"Converting MP3 to WAV (received {len(mp3_data)} bytes)")
                 audio = AudioSegment.from_mp3(io.BytesIO(mp3_data))
+
+                # Set to the requested sample rate
+                sample_rate = kwargs.get("sample_rate", 44100)
+                audio = audio.set_frame_rate(sample_rate)
 
                 # Export as WAV
                 wav_buffer = io.BytesIO()
-                audio.export(wav_buffer, format="wav")
+                audio.export(wav_buffer, format="wav", parameters=["-ar", str(sample_rate)])
                 wav_buffer.seek(0)
-                return wav_buffer.getvalue()
-            except ImportError:
-                logger.warning("pydub not installed, returning MP3 format")
-                return mp3_data
+
+                wav_data = wav_buffer.getvalue()
+                logger.info(f"Successfully converted to WAV ({len(wav_data)} bytes, {sample_rate}Hz)")
+                return wav_data
+            except ImportError as e:
+                error_msg = "pydub not installed - cannot convert Eleven Labs MP3 to WAV. Install with: pip install pydub"
+                logger.error(error_msg)
+                raise Exception(error_msg)
+            except Exception as e:
+                error_msg = f"Failed to convert MP3 to WAV: {str(e)}"
+                logger.error(error_msg)
+                raise Exception(error_msg)
 
         except Exception as e:
             logger.error(f"Eleven Labs sound generation failed: {e}")
@@ -312,7 +330,9 @@ def generate_audio():
 
         # Generate audio based on provider
         if provider == AudioProvider.ELEVENLABS.value:
-            audio_data = server.generate_with_elevenlabs(prompt, **data)
+            # Remove prompt from data dict to avoid duplicate argument
+            generation_params = {k: v for k, v in data.items() if k != 'prompt'}
+            audio_data = server.generate_with_elevenlabs(prompt, **generation_params)
         elif provider == AudioProvider.TEST.value:
             audio_data = server.generate_test_audio(prompt, seed, **data)
         else:  # Default to AudioLDM2
@@ -357,7 +377,9 @@ def generate_multiple_audio():
             if provider == AudioProvider.ELEVENLABS.value:
                 # For Eleven Labs, vary prompt influence for different variations
                 data['prompt_influence'] = min(1.0, data.get('prompt_influence', 0.3) + (i * 0.1))
-                audio_data = server.generate_with_elevenlabs(prompt, **data)
+                # Remove prompt from data dict to avoid duplicate argument
+                generation_params = {k: v for k, v in data.items() if k != 'prompt'}
+                audio_data = server.generate_with_elevenlabs(prompt, **generation_params)
             elif provider == AudioProvider.TEST.value:
                 audio_data = server.generate_test_audio(prompt, i, **data)
             else:  # Default to AudioLDM2
