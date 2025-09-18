@@ -1,0 +1,18 @@
+loop "music/drone":
+    volume = 0.2
+    pitch = 0.1
+    move = walk,-10to10,-5to8,1
+    visual = trail and cube
+    move = walk,-20to20,-10to10,1to3
+5 * loop "bird/2to4":
+    volume = 0.01
+    pitch = 0.8
+    move = pos, -10to10, -10to10, -10to10
+loop "generation/waterfall":
+    volume = 0.05
+    pitch = 1.0
+    move = fly,0,10,0,1
+loop "generation/crowd_of_people":
+    volume = 0.2
+    pitch = 1.0
+    move = pos,0,0,0

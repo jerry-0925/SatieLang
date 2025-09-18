@@ -1,3 +1,0 @@
-loop "generation/crowd_of_people":
-    volume = 0.3
-    pitch = 0.5
