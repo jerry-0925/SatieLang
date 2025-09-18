@@ -25,6 +25,9 @@ namespace Satie
         public RangeOrValue wanderHz = new(0.3f);
 
         public List<string> visual = new();
+
+        public InterpolationData volumeInterpolation;
+        public InterpolationData pitchInterpolation;
     }
 
     public readonly struct RangeOrValue
@@ -188,8 +191,18 @@ namespace Satie
                 string v = p.Groups["val"].Value.Trim();
                 switch (k)
                 {
-                    case "volume": s.volume = RangeOrValue.Parse(v); break;
-                    case "pitch": s.pitch = RangeOrValue.Parse(v); break;
+                    case "volume":
+                        if (v.Contains("interpolate"))
+                            s.volumeInterpolation = InterpolationData.Parse(v);
+                        else
+                            s.volume = RangeOrValue.Parse(v);
+                        break;
+                    case "pitch":
+                        if (v.Contains("interpolate"))
+                            s.pitchInterpolation = InterpolationData.Parse(v);
+                        else
+                            s.pitch = RangeOrValue.Parse(v);
+                        break;
                     case "starts_at": s.starts_at = RangeOrValue.Parse(v); break;
                     case "duration": s.duration = RangeOrValue.Parse(v); break;
                     case "fade_in": s.fade_in = RangeOrValue.Parse(v); break;
@@ -207,18 +220,45 @@ namespace Satie
         {
             bool hasVol = g.props.TryGetValue("volume", out string vRaw);
             bool hasPitch = g.props.TryGetValue("pitch",  out string pRaw);
-            RangeOrValue gVolRange = hasVol ? RangeOrValue.Parse(vRaw) : new RangeOrValue(1f);
-            RangeOrValue gPitchRange = hasPitch ? RangeOrValue.Parse(pRaw) : new RangeOrValue(1f);
+
+            InterpolationData groupVolInterp = null;
+            InterpolationData groupPitchInterp = null;
+            RangeOrValue gVolRange = new RangeOrValue(1f);
+            RangeOrValue gPitchRange = new RangeOrValue(1f);
+
+            if (hasVol)
+            {
+                if (vRaw.Contains("interpolate"))
+                    groupVolInterp = InterpolationData.Parse(vRaw);
+                else
+                    gVolRange = RangeOrValue.Parse(vRaw);
+            }
+
+            if (hasPitch)
+            {
+                if (pRaw.Contains("interpolate"))
+                    groupPitchInterp = InterpolationData.Parse(pRaw);
+                else
+                    gPitchRange = RangeOrValue.Parse(pRaw);
+            }
 
             foreach (var s in g.children)
             {
+                // Handle interpolations from group
+                if (groupVolInterp != null && s.volumeInterpolation == null)
+                    s.volumeInterpolation = groupVolInterp;
+                if (groupPitchInterp != null && s.pitchInterpolation == null)
+                    s.pitchInterpolation = groupPitchInterp;
+
                 // Volume and pitch multiply with group values
                 // Sample per statement so each gets its own random value if group has a range
                 float gVol = gVolRange.Sample();
                 float gPitch = gPitchRange.Sample();
-                
-                if (hasVol) s.volume = s.volume.isSet ? s.volume.Mul(gVol) : new RangeOrValue(gVol);
-                if (hasPitch) s.pitch = s.pitch.isSet  ? s.pitch .Mul(gPitch) : new RangeOrValue(gPitch);
+
+                if (hasVol && groupVolInterp == null)
+                    s.volume = s.volume.isSet ? s.volume.Mul(gVol) : new RangeOrValue(gVol);
+                if (hasPitch && groupPitchInterp == null)
+                    s.pitch = s.pitch.isSet  ? s.pitch .Mul(gPitch) : new RangeOrValue(gPitch);
 
                 foreach (var kv in g.props)
                 {

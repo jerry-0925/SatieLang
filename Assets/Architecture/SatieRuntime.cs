@@ -91,10 +91,16 @@ public class SatieRuntime : MonoBehaviour
                 if (!newClip) { Debug.LogWarning($"[Satie] Audio clip '{clipName}' missing."); yield break; }
 
                 persistent.clip = newClip;
-                persistent.pitch = s.pitch.Sample();
+
+                if (s.pitchInterpolation == null)
+                    persistent.pitch = s.pitch.Sample();
+
                 float targetVol  = s.volume.Sample();
 
-                StartCoroutine(Fade(persistent, 0f, targetVol, s.fade_in.Sample()));
+                if (s.volumeInterpolation == null && s.fade_in.isSet)
+                    StartCoroutine(Fade(persistent, 0f, targetVol, s.fade_in.Sample()));
+                else if (s.volumeInterpolation == null)
+                    persistent.volume = targetVol;
 
                 persistent.time = 0f;
                 persistent.Play();
@@ -118,7 +124,7 @@ public class SatieRuntime : MonoBehaviour
                              + $"Looked for Resources/{SatieParser.PathFor(clipName)}.*");
             return null;
         }
-        
+
         var go = new GameObject($"[SP] {clipName}");
         go.transform.SetParent(transform);
 
@@ -129,6 +135,12 @@ public class SatieRuntime : MonoBehaviour
         src.loop = (s.kind == "loop");
         src.volume = 0f;
         src.pitch = s.pitch.Sample();
+
+        if (s.volumeInterpolation != null || s.pitchInterpolation != null)
+        {
+            var interpComp = go.AddComponent<InterpolatedAudioSource>();
+            interpComp.SetupInterpolations(s);
+        }
 
         // Configure spatial audio using the spatial audio component
         bool is3D = s.wanderType != Statement.WanderType.None;
@@ -180,7 +192,15 @@ public class SatieRuntime : MonoBehaviour
             spatialAudio.AddSteamAudioComponents(go);
         }
 
-        StartCoroutine(Fade(src, 0f, s.volume.Sample(), s.fade_in.Sample()));
+        if (s.volumeInterpolation == null && s.fade_in.isSet)
+        {
+            StartCoroutine(Fade(src, 0f, s.volume.Sample(), s.fade_in.Sample()));
+        }
+        else if (s.volumeInterpolation == null)
+        {
+            src.volume = s.volume.Sample();
+        }
+
         return src;
     }
 
