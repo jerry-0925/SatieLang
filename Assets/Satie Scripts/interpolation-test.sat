@@ -1,14 +1,13 @@
 # Test script for interpolation functionality
 
-# Basic fade in effect (replaces old fade_in)
-loop "music/beat":
-    volume = 1
-    pitch = interpolate(0.5and1 as sine in 2 for ever)
-    move = fly, -10to11, -9to12, -11to20, 1to3
-    visual = sphere
+10 * oneshot "voice/1to39" every 5to20:
+    volume = interpolate(0and0.05 as sine in 10to20 for ever)
+    pitch = interpolate(0.8and0.9to2 as sine in 60 for ever)
+    move = walk, -20to10, -5to15, 0.5to2
+    visual = trail
 
-loop "music/drone":
-    volume = 1
-    pitch = interpolate(0.1and2 as sineOut in 5 for ever)
-    move = fly, -10to11, -9to12, -11to20, 1to3
-    visual = sphere and trail
+10 * loop "generation/tibetan_monk_singing_om":
+        volume = interpolate(0and0.05 as sine in 10to20 for ever)
+        pitch = interpolate(0.8and0.9to2 as sine in 60 for ever)
+        move = walk, -20to10, -5to15, 0.5to2
+        visual = trail
