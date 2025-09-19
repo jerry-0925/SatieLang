@@ -1,0 +1,107 @@
+# Comprehensive Satie Syntax Test
+# This file tests all language features for syntax highlighting
+
+# Test 1: Groups with names
+group birds:
+    volume = 0.8
+    pitch = 1.2to1.8
+
+    # Test 2: Statements with count multipliers
+    5 * loop "bird/chirp" every 2to10:
+        volume = interpolate(0.5and1.0 as linear in 2to5 for ever)
+        pitch = goto(1and2 as inquad in 3)
+        move = fly, -10to10, 0to15, -10to10, 0.1to0.5
+        visual = trail and sphere
+
+    3 * oneshot "bird/call" every 1to6:
+        volume = gobetween(0.2and0.8 as incubic in 1.5 for 3)
+        pitch = 0.8to1.4
+        fade_in = 0.5to2
+        move = walk, -5to5, -5to5, 0.3
+        visual = object "Bird_Prefab"
+
+group ambient:
+    volume = 0.6
+
+    # Test 3: All property types
+    loop "forest/wind":
+        starts_at = 0
+        duration = 30to60
+        fade_in = 5
+        fade_out = 3
+        overlap = true
+        move = pos, 0, 5, 10
+        visual = cube and cylinder
+
+    # Test 4: All interpolation types
+    oneshot "test/interpolations":
+        volume = interpolate(0.1and0.9 as outquad in 2 for ever)
+        pitch = goto(0.5and2.0 as insine in 4)
+        fade_in = gobetween(0and5 as linear in 3 for 2)
+
+    # Test 5: All movement types
+    loop "movement/test":
+        move = walk, -20to20, -10to10, 0.2
+
+    oneshot "movement/test2":
+        move = fly, -30to30, 0to20, -30to30, 0.05to0.15
+
+    loop "movement/test3":
+        move = pos, 5, 10, -5
+
+    # Test 6: All visual types
+    oneshot "visuals/test1":
+        visual = trail
+
+    oneshot "visuals/test2":
+        visual = sphere and cube and cylinder
+
+    oneshot "visuals/test3":
+        visual = object "CustomPrefab"
+
+    oneshot "visuals/test4":
+        visual = capsule and object "AnotherPrefab" and trail
+
+    # Test 7: All easing functions
+    loop "easing/linear":
+        volume = goto(0and1 as linear in 2)
+
+    loop "easing/quad":
+        volume = goto(0and1 as inquad in 2)
+        pitch = gobetween(0.5and2 as outquad in 3)
+
+    loop "easing/cubic":
+        volume = interpolate(0and1 as incubic in 2)
+        pitch = goto(0.5and2 as outcubic in 3)
+
+    loop "easing/advanced":
+        volume = gobetween(0and1 as inelastic in 5 for ever)
+        pitch = goto(0.5and2 as outbounce in 3)
+
+# Test 8: Negative numbers and complex ranges
+group negativetests:
+    volume = -1to1
+
+    loop "negative/test":
+        volume = -0.5to0.5
+        pitch = gobetween(-2and2 as linear in 1to3)
+        move = walk, -50to50, -10to-5, 0.1
+
+# Test 9: Boolean values
+group booltests:
+    overlap = true
+
+    loop "bool/test":
+        overlap = false
+        volume = t
+        pitch = f
+
+# Test 10: Simple statements without count
+loop "simple/test":
+    volume = 0.8
+
+oneshot "simple/oneshot" every 5:
+    pitch = 1.2
+
+# Test 11: endgroup keyword
+endgroup

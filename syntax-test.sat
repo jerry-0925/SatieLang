@@ -1,0 +1,45 @@
+# Test file for syntax highlighting
+# This file tests all the new language features
+
+# Group with name
+group birds:
+    volume = 0.8
+    pitch = 1.2to1.8
+
+    # Statement with count multiplier
+    5 * loop "bird/chirp" every 2to10:
+        volume = interpolate(0.5and1.0 as linear in 2to5 for ever)
+        pitch = goto(1and2 as inquad in 3)
+        move = fly, -10to10, 0to15, -10to10, 0.1to0.5
+        visual = trail and sphere
+
+    3 * oneshot "bird/call" every 1to6:
+        volume = gobetween(0.2and0.8 as incubic in 1.5 for 3)
+        pitch = 0.8to1.4
+        fade_in = 0.5to2
+        move = walk, -5to5, -5to5, 0.3
+        visual = object "Bird_Prefab"
+
+group ambient:
+    volume = 0.6
+
+    loop "forest/wind":
+        starts_at = 0
+        duration = 30to60
+        fade_in = 5
+        fade_out = 3
+        move = pos, 0, 5, 10
+        visual = cube and cylinder
+
+    oneshot "forest/leaves" every 5to15:
+        overlap = true
+        volume = 0.4to0.9
+        pitch = goto(0.8and1.2 as outquad in 4)
+        move = fly, -20to20, 2to8, -20to20, 0.05
+        visual = capsule
+
+# Test negative numbers and ranges
+loop "test/negative":
+    volume = -1to1
+    pitch = gobetween(-2and2 as linear in 1to3)
+    move = walk, -50to50, -10to-5, 0.1

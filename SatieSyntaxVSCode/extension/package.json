@@ -1,0 +1,44 @@
+{
+    "name": "satie-syntax",
+    "displayName": "Satie Syntax Highlighting",
+    "description": "Syntax highlighting for Satie (.sat) script files.",
+    "version": "0.1.0",
+    "publisher": "MLF",
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "satie",
+                "aliases": [
+                    "Satie",
+                    "satie",
+                    "sat"
+                ],
+                "extensions": [
+                    ".sat",
+                    ".satie"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "satie",
+                "scopeName": "source.satie",
+                "path": "./syntaxes/satie.tmLanguage.json"
+            }
+        ]
+    },
+    "keywords": ["satie", "syntax", "highlighting"],
+    "author": "MLF",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/satie-syntax"
+    }
+}
