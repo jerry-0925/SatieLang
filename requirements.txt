@@ -8,6 +8,3 @@ soundfile==0.12.1
 librosa==0.10.1
 numpy>=1.24.0
 scipy>=1.10.0
-requests>=2.31.0
-pydub>=0.25.1
-elevenlabs>=0.2.27
