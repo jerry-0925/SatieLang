@@ -192,13 +192,13 @@ namespace Satie
                 switch (k)
                 {
                     case "volume":
-                        if (v.Contains("interpolate"))
+                        if (v.Contains("interpolate") || v.Contains("goto") || v.Contains("gobetween"))
                             s.volumeInterpolation = InterpolationData.Parse(v);
                         else
                             s.volume = RangeOrValue.Parse(v);
                         break;
                     case "pitch":
-                        if (v.Contains("interpolate"))
+                        if (v.Contains("interpolate") || v.Contains("goto") || v.Contains("gobetween"))
                             s.pitchInterpolation = InterpolationData.Parse(v);
                         else
                             s.pitch = RangeOrValue.Parse(v);
@@ -228,7 +228,7 @@ namespace Satie
 
             if (hasVol)
             {
-                if (vRaw.Contains("interpolate"))
+                if (vRaw.Contains("interpolate") || vRaw.Contains("goto") || vRaw.Contains("gobetween"))
                     groupVolInterp = InterpolationData.Parse(vRaw);
                 else
                     gVolRange = RangeOrValue.Parse(vRaw);
@@ -236,7 +236,7 @@ namespace Satie
 
             if (hasPitch)
             {
-                if (pRaw.Contains("interpolate"))
+                if (pRaw.Contains("interpolate") || pRaw.Contains("goto") || pRaw.Contains("gobetween"))
                     groupPitchInterp = InterpolationData.Parse(pRaw);
                 else
                     gPitchRange = RangeOrValue.Parse(pRaw);
