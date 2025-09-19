@@ -97,7 +97,14 @@ public class SatieRuntime : MonoBehaviour
 
                 float targetVol  = s.volume.Sample();
 
-                if (s.volumeInterpolation == null && s.fade_in.isSet)
+                // Handle initial volume based on interpolation type
+                if (s.volumeInterpolation != null &&
+                    s.volumeInterpolation.interpolationType == InterpolationType.Goto)
+                {
+                    // For goto, start at the min value to avoid clicks
+                    persistent.volume = s.volumeInterpolation.minValue;
+                }
+                else if (s.volumeInterpolation == null && s.fade_in.isSet)
                     StartCoroutine(Fade(persistent, 0f, targetVol, s.fade_in.Sample()));
                 else if (s.volumeInterpolation == null)
                     persistent.volume = targetVol;
@@ -133,8 +140,28 @@ public class SatieRuntime : MonoBehaviour
 
         src.clip = clip;
         src.loop = (s.kind == "loop");
-        src.volume = 0f;
-        src.pitch = s.pitch.Sample();
+
+        // Initialize volume based on interpolation type to avoid clicks
+        if (s.volumeInterpolation != null &&
+            s.volumeInterpolation.interpolationType == InterpolationType.Goto)
+        {
+            src.volume = s.volumeInterpolation.minValue;
+        }
+        else
+        {
+            src.volume = 0f;  // Default to 0 for fade-ins or normal volume setting
+        }
+
+        // Initialize pitch based on interpolation type
+        if (s.pitchInterpolation != null &&
+            s.pitchInterpolation.interpolationType == InterpolationType.Goto)
+        {
+            src.pitch = s.pitchInterpolation.minValue;
+        }
+        else
+        {
+            src.pitch = s.pitch.Sample();
+        }
 
         if (s.volumeInterpolation != null || s.pitchInterpolation != null)
         {
@@ -192,7 +219,14 @@ public class SatieRuntime : MonoBehaviour
             spatialAudio.AddSteamAudioComponents(go);
         }
 
-        if (s.volumeInterpolation == null && s.fade_in.isSet)
+        // Handle initial volume based on interpolation type
+        if (s.volumeInterpolation != null &&
+            s.volumeInterpolation.interpolationType == InterpolationType.Goto)
+        {
+            // For goto, start at the min value to avoid clicks
+            src.volume = s.volumeInterpolation.minValue;
+        }
+        else if (s.volumeInterpolation == null && s.fade_in.isSet)
         {
             StartCoroutine(Fade(src, 0f, s.volume.Sample(), s.fade_in.Sample()));
         }

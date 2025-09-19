@@ -36,8 +36,26 @@ public class InterpolatedAudioSource : MonoBehaviour
             interpolationManager.pitchInterp = stmt.pitchInterpolation.CreateCopy();
         }
 
-        audioSource.volume = childVolumeMultiplier;
-        audioSource.pitch = childPitchMultiplier;
+        // For goto interpolations, start at the interpolation's min value to avoid clicks
+        if (stmt.volumeInterpolation != null &&
+            stmt.volumeInterpolation.interpolationType == InterpolationType.Goto)
+        {
+            audioSource.volume = stmt.volumeInterpolation.minValue * childVolumeMultiplier;
+        }
+        else
+        {
+            audioSource.volume = childVolumeMultiplier;
+        }
+
+        if (stmt.pitchInterpolation != null &&
+            stmt.pitchInterpolation.interpolationType == InterpolationType.Goto)
+        {
+            audioSource.pitch = stmt.pitchInterpolation.minValue * childPitchMultiplier;
+        }
+        else
+        {
+            audioSource.pitch = childPitchMultiplier;
+        }
     }
 
     void Update()

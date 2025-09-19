@@ -1,13 +1,9 @@
 # Test script for interpolation functionality
 
-10 * oneshot "voice/1to39" every 5to20:
-    volume = interpolate(0and0.05 as sine in 10to20 for ever)
-    pitch = interpolate(0.8and0.9to2 as sine in 60 for ever)
+# Using goto - goes from 0 to 0.5 and stays at 0.5
+loop "music/drone":
+    starts_at = 2
+    volume = goto(0and0.5 as inquad in 2)
+    pitch = gobetween(1.2and2 as incubic in 5)
     move = walk, -20to10, -5to15, 0.5to2
     visual = trail
-
-10 * loop "generation/tibetan_monk_singing_om":
-        volume = interpolate(0and0.05 as sine in 10to20 for ever)
-        pitch = interpolate(0.8and0.9to2 as sine in 60 for ever)
-        move = walk, -20to10, -5to15, 0.5to2
-        visual = trail
