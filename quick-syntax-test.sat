@@ -1,0 +1,8 @@
+# Quick syntax test
+group test:
+    volume = 0.8
+
+    5 * loop "audio/test" every 2to5:
+        pitch = goto(1and2 as inquad in 3)
+        visual = trail and sphere
+        move = fly, -10to10, 0to5, -10to10, 0.2
