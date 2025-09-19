@@ -59,6 +59,9 @@ namespace Satie
         [SerializeField] [Range(50, 500)] private int audioldm2InferenceSteps = 200;
         [SerializeField] [Range(1f, 30f)] private float audioldm2Duration = 10f;
 
+        [Header("Audio Settings")]
+        [SerializeField] private bool generateLoopingAudio = false;
+
         // Cache for generated audio
         private Dictionary<string, AudioGenerationResult> generationCache = new Dictionary<string, AudioGenerationResult>();
 
@@ -152,7 +155,9 @@ namespace Satie
                     provider = provider.ToString().ToLower(),
                     // Eleven Labs specific parameters
                     duration_seconds = elevenLabsDuration,
-                    prompt_influence = elevenLabsPromptInfluence
+                    prompt_influence = elevenLabsPromptInfluence,
+                    // Looping setting
+                    looping = generateLoopingAudio
                 };
 
                 string jsonRequest = JsonUtility.ToJson(requestData);
@@ -212,6 +217,8 @@ namespace Satie
             // Eleven Labs specific
             public float duration_seconds;
             public float prompt_influence;
+            // Looping audio
+            public bool looping;
         }
 
         public async Task<string> SaveSelectedAudio(AudioGenerationResult result, int selectedIndex)
@@ -486,6 +493,17 @@ namespace Satie
         public string GetApiUrl()
         {
             return apiUrl;
+        }
+
+        public void SetLoopingAudio(bool looping)
+        {
+            generateLoopingAudio = looping;
+            Debug.Log($"[AudioGen] Looping audio set to: {looping}");
+        }
+
+        public bool GetLoopingAudio()
+        {
+            return generateLoopingAudio;
         }
     }
 }

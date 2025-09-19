@@ -111,6 +111,7 @@ public class SatieAudioGenEditor : Editor
 
             EditorGUILayout.PropertyField(serializedObject.FindProperty("defaultProvider"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("numOptions"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("generateLoopingAudio"));
 
             EditorGUILayout.Space(5);
 
