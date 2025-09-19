@@ -6,9 +6,8 @@ This server provides an API for generating audio from text prompts using AudioLD
 
 import os
 import io
-import json
 import logging
-import tempfile
+import base64
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import numpy as np
@@ -54,6 +53,7 @@ def initialize_model():
     except Exception as e:
         logger.warning(f"Failed to load with safetensors: {e}")
         # Fallback to regular loading
+        dtype = torch.float16 if torch.cuda.is_available() else torch.float32
         model = AudioLDM2Pipeline.from_pretrained(
             "cvssp/audioldm2",
             torch_dtype=dtype
@@ -223,7 +223,6 @@ def generate_multiple_audio():
             wav_bytes = wav_buffer.getvalue()
 
             # Encode as base64 for JSON response
-            import base64
             audio_base64 = base64.b64encode(wav_bytes).decode('utf-8')
             audio_files.append(audio_base64)
 
@@ -259,5 +258,5 @@ if __name__ == '__main__':
     initialize_model()
 
     # Run the server
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=False)
