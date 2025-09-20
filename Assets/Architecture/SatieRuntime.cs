@@ -71,6 +71,9 @@ public class SatieRuntime : MonoBehaviour
     {
         AudioSource persistent = null;
 
+        // Add initial delay before first trigger to respect the 'every' timing range
+        yield return new WaitForSeconds(s.every.Sample());
+
         while (true)
         {
             if (s.overlap)
