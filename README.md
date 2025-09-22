@@ -152,7 +152,6 @@ Spawn multiple independent instances:
 5 * loop "bird_chirp":
     volume = 0.3to0.6
     pitch = 0.8to1.3
-    every = 1.0to5.0
 ```
 
 #### 5. Timing and Fading
@@ -172,16 +171,14 @@ oneshot "sfx" every 0.5to2.0:  # Play repeatedly with random intervals
 #### 6. Groups
 Apply properties to multiple statements:
 ```satie
-group:
-    volume = 0.5
-    pitch = 1.2
-
+group "background":
+volume = 0.5
+pitch = 1.2
     loop "layer1":
         fade_in = 1.0
 
     loop "layer2":
         fade_in = 2.0
-endgroup
 ```
 
 #### 7. Movement and Visualization
@@ -191,7 +188,7 @@ loop "flying_sound":
     move = fly,-20to20,0to20,-20to30,1  # Fly randomly in 3D space
     visual = trail                       # Add visual trail
 
-oneshot "static_sound":
+oneshot "static_sound" every 5to10:
     move = pos,10,5,-10                  # Fixed position
     visual = sphere                       # Show as sphere
 ```
