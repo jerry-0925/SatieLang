@@ -370,7 +370,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 571ab9772484754459a267c6b3e548c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scriptFile: {fileID: 2811297602134710623, guid: 5e4b47c87a0aa4a2d91d35eabb95ae57, type: 3}
+  scriptFile: {fileID: 2811297602134710623, guid: c1af4171f20b5473aa8f09952ade4b56, type: 3}
 --- !u!4 &1228820744
 Transform:
   m_ObjectHideFlags: 0
@@ -406,6 +406,7 @@ MonoBehaviour:
   elevenLabsPromptInfluence: 0.3
   audioldm2InferenceSteps: 200
   audioldm2Duration: 10
+  generateLoopingAudio: 0
 --- !u!114 &1228820747
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1,0 +1,30 @@
+# Soundscaping with Jerry & Dr. B
+
+group "background":
+pitch = 0.8
+    loop "exp/drone":
+        volume = 0.4
+        pitch = 0.5
+        move = pos,-10,0,0
+
+    loop "exp/alarm":
+        volume = goto(0and0.5 as inquad in 10)
+        pitch = gobetween(0.6and1 as inoutquad in 20)
+        move = fly,-5to5,0to15,-10to10,1
+        visual = trail
+
+    oneshot "exp/bell" every 20to40:
+        volume = 0.05to0.1
+        pitch = 0.8to1.2
+        move = pos,0,10,0
+
+    loop "generation/calm_quiet_river":
+        volume = goto(0and0.1 as inquad in 10)
+        pitch = 0.8
+
+group birds:
+    4 * oneshot "bird/1to4" every 5to10:
+        volume = 0.005to0.05
+        pitch = 0.8to1.2
+        move = fly,-20to20,0to20,-20to30,1
+        visual = trail and sphere

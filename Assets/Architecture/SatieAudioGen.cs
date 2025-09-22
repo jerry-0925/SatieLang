@@ -170,6 +170,17 @@ namespace Satie
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.SetRequestHeader("Content-Type", "application/json");
 
+                    // Add ElevenLabs API key as header if provider is ElevenLabs
+                    if (provider == AudioProvider.ElevenLabs)
+                    {
+                        string apiKey = SatieAPIKeyManager.GetKey(SatieAPIKeyManager.Provider.ElevenLabs);
+                        if (!string.IsNullOrEmpty(apiKey))
+                        {
+                            request.SetRequestHeader("X-ElevenLabs-Key", apiKey);
+                            Debug.Log("[AudioGen] Added ElevenLabs API key to request header");
+                        }
+                    }
+
                     // Send request
                     var operation = request.SendWebRequest();
 
