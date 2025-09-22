@@ -78,11 +78,17 @@ namespace Satie
                             return minValue;  // End at starting position
                         }
                     }
-                    // Re-sample values for next cycle
-                    minValue = minRange.Sample();
-                    maxValue = maxRange.Sample();
-                    duration = durationRange.Sample();
-                    totalDuration = duration * 2;
+                    // Only re-sample values if they are ranges (random values)
+                    // For fixed values, keep the same min/max throughout
+                    if (minRange.isRange)
+                        minValue = minRange.Sample();
+                    if (maxRange.isRange)
+                        maxValue = maxRange.Sample();
+                    if (durationRange.isRange)
+                    {
+                        duration = durationRange.Sample();
+                        totalDuration = duration * 2;
+                    }
                 }
 
                 float t;
@@ -123,10 +129,14 @@ namespace Satie
                             return maxValue;
                         }
                     }
-                    // Re-sample values for next cycle
-                    minValue = minRange.Sample();
-                    maxValue = maxRange.Sample();
-                    duration = durationRange.Sample();
+                    // Only re-sample values if they are ranges (random values)
+                    // For fixed values, keep the same min/max throughout
+                    if (minRange.isRange)
+                        minValue = minRange.Sample();
+                    if (maxRange.isRange)
+                        maxValue = maxRange.Sample();
+                    if (durationRange.isRange)
+                        duration = durationRange.Sample();
                 }
 
                 float t = currentTime / duration;
