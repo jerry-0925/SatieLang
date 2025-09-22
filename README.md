@@ -59,6 +59,30 @@ SatieLang includes built-in support for Steam Audio's advanced spatial audio fea
    - Spatial audio is controlled via Unity's AudioSource components and Steam Audio components
    - The `SatieSpatialAudio` component handles the integration automatically
 
+### VS Code Syntax Highlighting
+
+For better development experience, install the Satie syntax highlighting extension for VS Code:
+
+1. **Install the Extension**:
+   - Find the extension file at `SatieSyntaxVSCode/satie-syntax-0.1.0.vsix`
+   - Open VS Code
+   - Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
+   - Type "Extensions: Install from VSIX..." and select it
+   - Browse to the `.vsix` file and install it
+   - Reload VS Code when prompted
+
+2. **Alternative: Command Line Installation**:
+   ```bash
+   code --install-extension SatieSyntaxVSCode/satie-syntax-0.1.0.vsix
+   ```
+
+This extension provides syntax highlighting for `.sat` files including:
+- Keywords (loop, oneshot, group)
+- Properties (volume, pitch, fade_in, etc.)
+- Interpolation functions (goto, gobetween)
+- Movement and visual effects
+- Comments and string literals
+
 ### Quick Start: "Hello World" Demo Scene
 
 The repository includes a demo scene to help you get started quickly:
