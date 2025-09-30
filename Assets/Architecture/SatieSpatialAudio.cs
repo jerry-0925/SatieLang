@@ -44,8 +44,38 @@ namespace Satie
         {
             if (useHRTF && autoSetupSteamAudio)
             {
-                SetupSteamAudio();
+                // Defer setup by one frame to avoid initialization order issues
+                StartCoroutine(DelayedSetup());
             }
+        }
+
+        private System.Collections.IEnumerator DelayedSetup()
+        {
+            // Wait for one frame to ensure all Unity systems are initialized
+            yield return null;
+
+#if UNITY_STANDALONE_WIN && STEAMAUDIO_ENABLED
+            // On Windows, disable existing Steam Audio Manager to prevent crashes
+            var existingManager = FindObjectOfType<SteamAudio.SteamAudioManager>();
+            if (existingManager != null)
+            {
+                Debug.LogWarning("[SpatialAudio] Disabling Steam Audio Manager on Windows to prevent phonon.dll crashes. Using Unity's native spatializer instead.");
+                existingManager.enabled = false;
+            }
+
+            // Also disable any SteamAudioListener components
+            var steamListeners = FindObjectsOfType<SteamAudio.SteamAudioListener>();
+            foreach (var listener in steamListeners)
+            {
+                listener.enabled = false;
+            }
+
+            Debug.Log("[SpatialAudio] Steam Audio components disabled on Windows. Spatial audio will use Unity's built-in spatializer.");
+            yield break;
+#else
+            Debug.Log("[SpatialAudio] Starting delayed Steam Audio setup...");
+            SetupSteamAudio();
+#endif
         }
 
         /// <summary>
@@ -81,6 +111,16 @@ namespace Satie
             if (!useHRTF) return;
 
 #if STEAMAUDIO_ENABLED
+#if UNITY_STANDALONE_WIN
+            // Disable SteamAudioSource component on Windows due to phonon.dll crash
+            // Unity's native spatializer will still work for 3D audio
+            // The crash occurs in iplContextSetVariableBool during SteamAudioManager.LateUpdate
+            if (Application.isPlaying)
+            {
+                Debug.LogWarning("[SpatialAudio] SteamAudioSource components disabled on Windows due to phonon.dll compatibility issues. Using Unity's native spatializer instead.");
+            }
+            return;
+#else
             try
             {
                 var steamSource = audioObject.GetComponent<SteamAudioSource>();
@@ -111,6 +151,7 @@ namespace Satie
             {
                 Debug.LogWarning($"[SpatialAudio] Failed to add Steam Audio components: {e.Message}");
             }
+#endif
 #else
             if (Application.isPlaying)
             {
@@ -125,24 +166,33 @@ namespace Satie
         public void SetupSteamAudio()
         {
 #if STEAMAUDIO_ENABLED
-            // Check if Steam Audio Manager exists, create if missing
-            var manager = FindObjectOfType<SteamAudioManager>();
-            if (manager == null)
+            try
             {
-                Debug.Log("[SpatialAudio] Creating Steam Audio Manager for HRTF support.");
-                var managerGO = new GameObject("Steam Audio Manager");
-                manager = managerGO.AddComponent<SteamAudioManager>();
-            }
+                // Check if Steam Audio Manager exists, create if missing
+                var manager = FindObjectOfType<SteamAudioManager>();
+                if (manager == null)
+                {
+                    Debug.Log("[SpatialAudio] Creating Steam Audio Manager for HRTF support.");
+                    var managerGO = new GameObject("Steam Audio Manager");
+                    manager = managerGO.AddComponent<SteamAudioManager>();
+                }
 
-            // Check if main camera has Steam Audio Listener
-            var mainCamera = Camera.main;
-            if (mainCamera != null)
-            {
-                SetupCameraAudioComponents(mainCamera);
+                // Check if main camera has Steam Audio Listener
+                var mainCamera = Camera.main;
+                if (mainCamera != null)
+                {
+                    SetupCameraAudioComponents(mainCamera);
+                }
+                else
+                {
+                    Debug.LogWarning("[SpatialAudio] No Main Camera found. Please ensure a camera with AudioListener exists in the scene.");
+                }
             }
-            else
+            catch (System.Exception e)
             {
-                Debug.LogWarning("[SpatialAudio] No Main Camera found. Please ensure a camera with AudioListener exists in the scene.");
+                Debug.LogError($"[SpatialAudio] Failed to setup Steam Audio (this may cause Unity to crash): {e.Message}\nStack: {e.StackTrace}");
+                Debug.LogError("[SpatialAudio] Disabling auto-setup to prevent further crashes.");
+                autoSetupSteamAudio = false;
             }
 #else
             Debug.Log("[SpatialAudio] Steam Audio not enabled. To enable:" +
@@ -157,25 +207,33 @@ namespace Satie
         private void SetupCameraAudioComponents(Camera camera)
         {
 #if STEAMAUDIO_ENABLED
-            var steamListener = camera.GetComponent<SteamAudioListener>();
-            var audioListener = camera.GetComponent<AudioListener>();
-
-            // Ensure Unity's AudioListener exists (required by Steam Audio)
-            if (audioListener == null)
+            try
             {
-                Debug.Log("[SpatialAudio] Adding Unity AudioListener to Main Camera (required by Steam Audio).");
-                audioListener = camera.gameObject.AddComponent<AudioListener>();
+                var steamListener = camera.GetComponent<SteamAudioListener>();
+                var audioListener = camera.GetComponent<AudioListener>();
+
+                // Ensure Unity's AudioListener exists (required by Steam Audio)
+                if (audioListener == null)
+                {
+                    Debug.Log("[SpatialAudio] Adding Unity AudioListener to Main Camera (required by Steam Audio).");
+                    audioListener = camera.gameObject.AddComponent<AudioListener>();
+                }
+
+                // Add Steam Audio Listener component if missing
+                if (steamListener == null)
+                {
+                    Debug.Log("[SpatialAudio] Adding Steam Audio Listener to Main Camera for HRTF support.");
+                    steamListener = camera.gameObject.AddComponent<SteamAudioListener>();
+
+                    // Configure Steam Audio Listener
+                    steamListener.applyReverb = enableReflections;
+                    steamListener.reverbType = ReverbType.Realtime;
+                }
             }
-
-            // Add Steam Audio Listener component if missing
-            if (steamListener == null)
+            catch (System.Exception e)
             {
-                Debug.Log("[SpatialAudio] Adding Steam Audio Listener to Main Camera for HRTF support.");
-                steamListener = camera.gameObject.AddComponent<SteamAudioListener>();
-
-                // Configure Steam Audio Listener
-                steamListener.applyReverb = enableReflections;
-                steamListener.reverbType = ReverbType.Realtime;
+                Debug.LogError($"[SpatialAudio] Failed to setup camera audio components: {e.Message}");
+                throw; // Re-throw to be caught by outer try-catch
             }
 #endif
         }
