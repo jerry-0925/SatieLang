@@ -1,6 +1,5 @@
 group forest:
 volume = 0.2
-duration = 80
 fade_out = 15
     loop "ambience/forest":
         volume = 0.2
@@ -8,57 +7,15 @@ fade_out = 15
     loop "ambience/water":
         volume = 0.8
         fade_in = 10
-        move = walk, -10to10, -10to10, 0.01
+        move = walk,-10to10,-10to10,1
 
 group animals:
-duration = 60
     loop "conversation/people":
         volume = 0.2
         fade_in = 10
-        move = walk, -10to10, -10to10, 0.001
+        move = walk,-10to10,-10to10,1
     loop "animals/duck":
         volume = 0.5
         starts_at = 5to10
         fade_in = 10
-        move = walk, -10to10, -10to10, 0.01
-
-group birds:
-pitch = 0.5
-duration = 40
-fade_out = 15
-    oneshot "bird/1to4" every 4to7:
-        volume = 0.2to0.3
-        pitch = 0.6to1
-        fade_in = 10to15
-        move = fly, -10to10, 0to15, -10to10, 0.06
-        visual = trail
-    oneshot "bird/1to4" every 4to7:
-        volume = 0.2to0.3
-        pitch = 0.6to1
-        fade_in = 10to15
-        move = fly, -10to10, 0to15, -10to10, 0.06
-        visual = trail
-
-group music:
-duration = 60
-pitch = 0.5
-    loop "music/drone":
-        volume = 0.07
-        starts_at = 20
-        fade_in = 35
-    loop "music/drone":
-        volume = 0.02
-        pitch = 2
-        starts_at = 20
-        fade_in = 30to40
-    oneshot "music/1to3" every 20to40:
-        volume = 0.5
-        move = pos, -10to10, 0to10, -10to10
-    loop "sacred/1":
-        volume = 0.3
-        move = walk, -10to10, -10to10, 0.01
-        visual = trail
-        fade_in = 50
-
-    
-
+        move = walk,-10to10,-10to10,1

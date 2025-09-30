@@ -92,3 +92,10 @@ audio_config.json.meta
 audioldm2_venv/
 *_venv/
 venv/
+
+# JetBrains IDE
+.idea/
+**/.idea/
+
+# Unity ProjectSettings auto-generated
+ProjectSettings/SceneTemplateSettings.json
