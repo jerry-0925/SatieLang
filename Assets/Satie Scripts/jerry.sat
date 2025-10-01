@@ -1,0 +1,21 @@
+group forest:
+volume = 0.2
+fade_out = 15
+    loop "ambience/forest":
+        volume = 0.2
+        fade_in = 10
+    loop "ambience/water":
+        volume = 0.8
+        fade_in = 10
+        move = walk,-10to10,-10to10,1
+
+group animals:
+    loop "conversation/people":
+        volume = 0.2
+        fade_in = 10
+        move = walk,-10to10,-10to10,1
+    loop "animals/duck":
+        volume = 0.5
+        starts_at = 5to10
+        fade_in = 10
+        move = walk,-10to10,-10to10,1
