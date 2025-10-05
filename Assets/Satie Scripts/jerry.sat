@@ -26,12 +26,14 @@ oneshot "trip/Dog bark" every 10to30:
     starts_at=20
     visual=trail
 
-oneshot "trip/Car beep" every 10to40:
+oneshot "trip/Car beep/1":
+    starts_at = 10
     volume=0.3to0.5
     pitch=1.2to1.5
     move=walk,-10to10,-5to5,1to2
     starts_at=10
     visual=cube
+
 
 
 2*oneshot "trip/bike" every 10to40:
