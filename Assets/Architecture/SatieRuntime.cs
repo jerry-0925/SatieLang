@@ -69,10 +69,19 @@ public class SatieRuntime : MonoBehaviour
     
     IEnumerator HandleOneShot(Statement s)
     {
-        AudioSource persistent = null;
+        Debug.Log($"[HandleOneShot] clip={s.clip}, every.isSet={s.every.isSet}, every.min={s.every.min}, every.max={s.every.max}");
 
-        // Add initial delay before first trigger to respect the 'every' timing range
-        yield return new WaitForSeconds(s.every.Sample());
+        // If no 'every' is set, play once and exit
+        if (!s.every.isSet)
+        {
+            Debug.Log($"[HandleOneShot] Playing once and exiting");
+            var src = SpawnSource(s);
+            yield break;
+        }
+
+        Debug.Log($"[HandleOneShot] Entering repeat loop");
+        // Repeating oneshot logic
+        AudioSource persistent = null;
 
         while (true)
         {
