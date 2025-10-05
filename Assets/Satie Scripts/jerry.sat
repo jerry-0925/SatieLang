@@ -18,21 +18,19 @@ loop "trip/Start of the run":
     move=walk,-10to10,-5to5,1to2
     visual=trail
 
-loop "trip/Dog bark":
+oneshot "trip/Dog bark" every 10to30:
     volume=0.2to0.3
     pitch=1.2to1.5
     move=walk,-20to20,-7to7,1to2
     visual=cube
     starts_at=20
-    duration=40
     visual=trail
 
-loop "trip/Car beep":
+oneshot "trip/Car beep" every 10to40:
     volume=0.3to0.5
     pitch=1.2to1.5
     move=walk,-10to10,-5to5,1to2
     starts_at=10
-    duration=40
     visual=cube
 
 
@@ -46,20 +44,20 @@ loop "trip/Clearer conversation":
     volume=goto(0and0.7 as inquad in 10)
     visual=trail
     starts_at=40
-    duration=30
+    duration=28
 
 loop "trip/Intensity run, heavy breathing":
     volume=goto(0and0.6 as inquad in 10)
     visual=trail
-    starts_at=60
+    starts_at=70
     move=walk,-3to3,-3to3,1to2
-    duration=40
+    duration=15
 
 loop "trip/heavy breathing + footsteps":
-    volume=goto(0and0.7 as inquad in 10)
+    volume=goto(0and1.0 as inquad in 10)
     visual=trail
-    starts_at=60
-    move=walk,-3to3,-3to3,1to2
+    starts_at=90
+    move=fly,-3to3,-3to3,1to2
     duration=20
 
 
