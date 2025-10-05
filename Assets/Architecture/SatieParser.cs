@@ -12,7 +12,7 @@ namespace Satie
         public int    count = 1;
         public RangeOrValue starts_at = RangeOrValue.Zero;
         public RangeOrValue duration = RangeOrValue.Null;
-        public RangeOrValue every = RangeOrValue.Zero;
+        public RangeOrValue every = RangeOrValue.Null;
         public RangeOrValue volume = new(1f);
         public RangeOrValue pitch = new(1f);
         public bool overlap = false;
@@ -62,7 +62,7 @@ namespace Satie
     public static class SatieParser
     {
         static readonly Regex StmtRx = new(
-            @"^(?:(?<count>\d+)\s*\*\s*)?(?<kind>loop|oneshot)\s+""(?<clip>.+?)""\s*(?:every\s+(?<e1>-?\d+\.?\d*)to(?<e2>-?\d+\.?\d*))?\s*:\s*\r?\n" +
+            @"^(?:(?<count>\d+)\s*\*\s*)?(?<kind>loop|oneshot)\s+""(?<clip>.+?)""\s*(?:every\s+(?:(?<e1>-?\d+\.?\d*)to(?<e2>-?\d+\.?\d*)|(?<e>-?\d+\.?\d*)))?\s*:\s*(?://.*)?\r?\n" +
             @"(?<block>(?:[ \t]+.*\r?\n?)*)",
             RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -184,6 +184,8 @@ namespace Satie
                 s.every = new RangeOrValue(
                     float.Parse(m.Groups["e1"].Value),
                     float.Parse(m.Groups["e2"].Value));
+            else if (m.Groups["e"].Success)
+                s.every = new RangeOrValue(float.Parse(m.Groups["e"].Value));
 
             foreach (Match p in PropRx.Matches(m.Groups["block"].Value))
             {
