@@ -10,15 +10,24 @@ loop "trip/Start of the run":
     starts_at=0
     duration=10
     visual=cube
-    
 
-5*oneshot "trip/footstep2" every 5to10:
+3*oneshot "trip/footstep2" every 8:
+    starts_at=10
     volume=0.1to0.2 
     pitch=1.2to1.5
     move=walk,-10to10,-5to5,1to2
     visual=trail
 
-oneshot "trip/Dog bark" every 10to30:
+ oneshot "trip/bike" every 50:
+    starts_at=10
+    volume=0.3to0.6
+    pitch=1.2to1.5
+    move=walk,-5to5,-5to5,1to2
+    visual=cube
+    duration=40
+    fade_out=10
+
+oneshot "trip/Dog bark":
     volume=0.2to0.3
     pitch=1.2to1.5
     move=walk,-20to20,-7to7,1to2
@@ -26,36 +35,53 @@ oneshot "trip/Dog bark" every 10to30:
     starts_at=20
     visual=trail
 
-oneshot "trip/Car beep/1":
-    starts_at = 10
+oneshot "trip/Car beep":
+    starts_at=30
     volume=0.3to0.5
-    visual=cube
-
-2*oneshot "trip/bike" every 10to40:
-    volume=0.3to0.6
-    pitch=1.2to1.5
-    move=walk,-5to5,-5to5,1to2
-    visual=cube
 
 loop "trip/Clearer conversation":
-    volume=goto(0and0.7 as inquad in 10)
+    volume=goto(0.4and0.7 as inquad in 10)
     visual=trail
     starts_at=40
-    duration=28
+    duration=27
+
+oneshot "trip/motorcycle":
+    volume=0.3
+    starts_at=50
+    move=walk,-20to20,-10to10,1to2
 
 loop "trip/Intensity run, heavy breathing":
-    volume=goto(0and0.6 as inquad in 10)
+    volume=goto(0.4and0.6 as inquad in 10)
     visual=trail
     starts_at=70
     move=walk,-3to3,-3to3,1to2
     duration=15
 
 loop "trip/heavy breathing + footsteps":
-    volume=goto(0and1.0 as inquad in 10)
+    volume=goto(0and0.8 as inquad in 10)
     visual=trail
     starts_at=90
     move=fly,-3to3,-3to3,1to2
     duration=20
+
+oneshot "trip/Dog bark":
+    volume=0.2to0.3
+    pitch=1.2to1.5
+    move=walk,-20to20,-7to7,1to2
+    visual=cube
+    starts_at=100
+    visual=trail
+
+oneshot "trip/Car beep":
+    starts_at=110
+    volume=0.3to0.5
+    fadeout=10
+
+oneshot "trip/Footsteps+conversation":
+    starts_at=110
+    volume=goto(0and0.4 as inquad in 10)
+    move=pos,-10,0,0 
+    fade_out=10
 
 
 
