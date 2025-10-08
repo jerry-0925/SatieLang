@@ -401,7 +401,7 @@ MonoBehaviour:
   apiUrl: http://localhost:5001/generate
   sampleRate: 44100
   numOptions: 1
-  defaultProvider: 1
+  defaultProvider: 0
   elevenLabsDuration: 10
   elevenLabsPromptInfluence: 0.3
   audioldm2InferenceSteps: 200
