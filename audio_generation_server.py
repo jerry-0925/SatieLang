@@ -379,12 +379,14 @@ def generate_audio():
             # Get API key from header if provided
             api_key_from_header = request.headers.get('X-ElevenLabs-Key')
             # Remove prompt from data dict to avoid duplicate argument
-            generation_params = {k: v for k, v in data.items() if k != 'prompt'}
+            generation_params = {k: v for k, v in data.items() if k not in ['prompt', 'provider', 'seed']}
             audio_data = server.generate_with_elevenlabs(prompt, api_key_override=api_key_from_header, **generation_params)
         elif provider == AudioProvider.TEST.value:
-            audio_data = server.generate_test_audio(prompt, seed, **data)
+            generation_params = {k: v for k, v in data.items() if k not in ['prompt', 'provider', 'seed']}
+            audio_data = server.generate_test_audio(prompt, seed, **generation_params)
         else:  # Default to AudioLDM2
-            audio_data = server.generate_with_audioldm2(prompt, seed, **data)
+            generation_params = {k: v for k, v in data.items() if k not in ['prompt', 'provider', 'seed']}
+            audio_data = server.generate_with_audioldm2(prompt, seed, **generation_params)
 
         logger.info(f"Audio generated successfully using {provider}")
 
@@ -426,12 +428,14 @@ def generate_multiple_audio():
                 # For Eleven Labs, vary prompt influence for different variations
                 data['prompt_influence'] = min(1.0, data.get('prompt_influence', 0.3) + (i * 0.1))
                 # Remove prompt from data dict to avoid duplicate argument
-                generation_params = {k: v for k, v in data.items() if k != 'prompt'}
+                generation_params = {k: v for k, v in data.items() if k not in ['prompt', 'provider', 'seed']}
                 audio_data = server.generate_with_elevenlabs(prompt, **generation_params)
             elif provider == AudioProvider.TEST.value:
-                audio_data = server.generate_test_audio(prompt, i, **data)
+                generation_params = {k: v for k, v in data.items() if k not in ['prompt', 'provider', 'seed']}
+                audio_data = server.generate_test_audio(prompt, i, **generation_params)
             else:  # Default to AudioLDM2
-                audio_data = server.generate_with_audioldm2(prompt, i, **data)
+                generation_params = {k: v for k, v in data.items() if k not in ['prompt', 'provider', 'seed']}
+                audio_data = server.generate_with_audioldm2(prompt, i, **generation_params)
 
             # Encode as base64 for JSON response
             audio_base64 = base64.b64encode(audio_data).decode('utf-8')
