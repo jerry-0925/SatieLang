@@ -1,0 +1,48 @@
+loop "bonfire/waves":
+    volume=goto(0and0.1 as inquad in 5)
+    move=pos,-15,0,0 
+    duration=70
+    fade_out=10
+
+ oneshot "bonfire/bonfire":
+    starts_at=10
+    volume=0.6
+    pitch=0.5to1
+    move=pos,10,5,0
+    visual=cube
+    fade_out=10
+
+ oneshot "bonfire/bonfire":
+    starts_at=10
+    volume=0.6
+    pitch=0.5to1
+    move=pos,-10,-5,0
+    visual=cube
+    fade_out=10
+
+2*oneshot "bonfire/sand":
+    starts_at=25
+    volume=0.2to0.3
+    move=walk,-10to10,-10to10,1to2
+    visual=trail
+    fade_out=10
+
+oneshot "bonfire/convo":
+    starts_at=30
+    volume=0.3
+    move=walk,-10to10,-10to10,1to2
+    fade_out=10
+
+oneshot "bonfire/guitar":
+    starts_at=35
+    volume=goto(0and0.06 as inquad in 5)
+    move=pos,10,6,0
+    fade_in=5
+    fade_out=10
+
+
+
+
+
+
+
