@@ -35,7 +35,7 @@ volume = 0.8
         visual = trail
 
 group forest:
-volume = 0.2
+volume = 0.42
     loop "ambience/forest":
         volume = 0.4
         fade_in = 10

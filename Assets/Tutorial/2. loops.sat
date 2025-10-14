@@ -6,7 +6,7 @@ loop "ambience/forest":
     fade_in = 5
 
 loop "ambience/water":
-    volume = 0.08        # quieter, more subtle
+    volume = 0.1       # quieter, more subtle
     pitch = 0.8to1.2    # pitch varies slightly on each loop, adding natural variation
     fade_in = 10
 
