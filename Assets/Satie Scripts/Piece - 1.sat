@@ -1,0 +1,21 @@
+5 * oneshot "prepared piano/1to46" every 5to15:
+    volume = goto(0and0.5 as inquad in 35)
+    pitch  = gobetween(0.8and1.2 as outquad in 5)
+    move = fly, -10to10, 0to10, -5to5, 1
+    visual = sphere
+
+
+group "monks":
+    loop "sacred/monks":
+        volume = goto(0and0.5 as inquad in 10)
+        visual = cube
+
+    loop "sacred/monks":
+        volume = goto(0and0.5 as inquad in 10)
+        pitch = gobetween(0.1and0.2 as outquad in 15)
+        visual = cube
+
+    loop "sacred/masterMonk":
+        volume = 0.8
+        pitch = gobetween(1and1.2 as outquad in 60)
+        visual = cube
