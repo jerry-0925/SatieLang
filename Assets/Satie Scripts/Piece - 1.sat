@@ -7,16 +7,39 @@
 
 loop "music/drone":
     volume = 0.2           # base layer with strong presence
+    starts_at = 0          # starts 1 second after group begins
+    fade_in = 35           # slow fade-in
+    duration = 60          # removed after 60 seconds
+
+loop "tomek/19":
+    volume = 0.2           # base layer with strong presence
     starts_at = 1          # starts 1 second after group begins
     fade_in = 35           # slow fade-in
+    move = fly, -10to10, 0to10, -5to5, 1
     duration = 60          # removed after 60 seconds
 
 loop "music/drone":
     volume = 0.08
-    pitch = 2              # two octaves up for tonal variation
+    pitch = 3              # two octaves up for tonal variation
     starts_at = 10         # starts 10 seconds into the group
     fade_in = 30to40       # randomized fade-in duration
     duration = 50          # removed after 50 seconds
+
+loop "tomek/19":
+    volume = 0.9           # base layer with strong presence
+    pitch = .6
+    starts_at = 5          # starts 1 second after group begins
+    fade_in = 35           # slow fade-in
+    move = fly, -10to10, 0to10, -5to5, 1
+    duration = 60          # removed after 60 seconds
+
+loop "tomek/55":
+    volume = 0.82           # base layer with strong presence
+    pitch = 1.1
+    starts_at = 7          # starts 1 second after group begins
+    fade_in = 35           # slow fade-in
+    move = fly, -10to10, 0to10, -5to5, 1
+    duration = 60          # removed after 60 seconds
 
 loop "music/drone":
     volume = 0.04
@@ -24,10 +47,63 @@ loop "music/drone":
     starts_at = 15         # starts after 15 seconds
     fade_in = 35
     duration = 35
-    
-loop "tomek/4bowlphrase":
-    volume = 1
-    starts_at = 1  
+
+loop "piano/17":
+    volume = 1.04
+    pitch = .25            # even higher pitch, very subtle layer
+    starts_at = 17         # starts after 15 seconds
+    fade_in = 35
+    duration = 35
+
+loop "music/drone":
+    volume = 1.04
+    pitch = .45            # even higher pitch, very subtle layer
+    starts_at = 20         # starts after 15 seconds
+    fade_in = 35
+    duration = 35
+
+loop "piano/13":
+    volume = 0.62           # base layer with strong presence
+    pitch = .1
+    starts_at = 23          # starts 1 second after group begins
+    fade_in = 35           # slow fade-in
     move = fly, -10to10, 0to10, -5to5, 1
-    visual = trail
+    duration = 60          # removed after 60 seconds
+
+loop "piano/15":
+    volume = 0.62           # base layer with strong presence
+    pitch = .3
+    starts_at = 31          # starts 1 second after group begins
+    fade_in = 15           # slow fade-in
+    move = fly, -10to10, 0to10, -5to5, 1
+    duration = 60          # removed after 60 seconds
+
+loop "piano/7":
+    volume = 0.62           # base layer with strong presence
+    pitch = .3
+    starts_at = 33          # starts 1 second after group begins
+    fade_in = 15           # slow fade-in
+    move = fly, -10to10, 0to10, -5to5, 1
+    duration = 60          # removed after 60 seconds
+
+loop "music/drone":
+    volume = 0.14
+    pitch = 1.2            # even higher pitch, very subtle layer
+    starts_at = 37         # starts after 15 seconds
+    fade_in = 35
+    duration = 35
+
+loop "music/drone":
+    volume = 0.14
+    pitch = 0.7            # even higher pitch, very subtle layer
+    starts_at = 42         # starts after 15 seconds
+    fade_in = 35
+    duration = 75
+
+loop "music/drone":
+    volume = 0.54
+    pitch = .22            # even higher pitch, very subtle layer
+    starts_at = 49         # starts after 15 seconds
+    fade_in = 35
+    duration = 65            
 
