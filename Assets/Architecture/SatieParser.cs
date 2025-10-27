@@ -16,6 +16,9 @@ namespace Satie
         public RangeOrValue volume = new(1f);
         public RangeOrValue pitch = new(1f);
         public bool overlap = false;
+        public bool persistent = false;
+        public bool mute = false;
+        public bool solo = false;
         public RangeOrValue fade_in = RangeOrValue.Null;
         public RangeOrValue fade_out = RangeOrValue.Null;
 
@@ -89,15 +92,37 @@ namespace Satie
             var lines   = script.Replace("\r\n", "\n").Split('\n');
 
             GroupCtx grp = null;
+            bool inBlockComment = false;
 
             for (int i = 0; i < lines.Length; ++i)
             {
                 string raw  = lines[i];
-                if (string.IsNullOrWhiteSpace(raw) || raw.TrimStart().StartsWith("#"))
+                string trimmed = raw.TrimStart();
+
+                // Check for block comment start
+                if (trimmed.StartsWith("comment", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    inBlockComment = true;
+                    continue;
+                }
+
+                // Check for block comment end
+                if (trimmed.StartsWith("endcomment", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    inBlockComment = false;
+                    continue;
+                }
+
+                // Skip lines inside block comments
+                if (inBlockComment)
+                    continue;
+
+                // Skip empty lines and single-line comments
+                if (string.IsNullOrWhiteSpace(raw) || trimmed.StartsWith("#"))
                     continue;
 
                 int    indent = CountIndent(raw);
-                string body   = raw.TrimStart();
+                string body   = trimmed;
 
                 //  close grp?
                 if (grp != null &&
@@ -187,7 +212,10 @@ namespace Satie
             else if (m.Groups["e"].Success)
                 s.every = new RangeOrValue(float.Parse(m.Groups["e"].Value));
 
-            foreach (Match p in PropRx.Matches(m.Groups["block"].Value))
+            // Strip block comments from the property block before parsing
+            string propsBlock = StripBlockComments(m.Groups["block"].Value);
+
+            foreach (Match p in PropRx.Matches(propsBlock))
             {
                 string k = p.Groups["key"].Value.ToLower();
                 string v = p.Groups["val"].Value.Trim();
@@ -211,6 +239,9 @@ namespace Satie
                     case "fade_out": s.fade_out = RangeOrValue.Parse(v); break;
                     case "every": s.every = RangeOrValue.Parse(v); break;
                     case "overlap": s.overlap = v.ToLower().StartsWith("t"); break;
+                    case "persistent": s.persistent = v.ToLower().StartsWith("t"); break;
+                    case "mute": s.mute = v.ToLower().StartsWith("t"); break;
+                    case "solo": s.solo = v.ToLower().StartsWith("t"); break;
                     case "visual": ParseVisual(s, v); break;
                     case "move": ParseMove(s,v); break;
                 }
@@ -274,6 +305,9 @@ namespace Satie
                         case "fade_out" when !s.fade_out.isSet: s.fade_out = RangeOrValue.Parse(kv.Value); break;
                         case "every" when !s.every.isSet: s.every = RangeOrValue.Parse(kv.Value); break;
                         case "overlap": s.overlap = kv.Value.ToLower().StartsWith("t"); break;
+                        case "persistent": s.persistent = kv.Value.ToLower().StartsWith("t"); break;
+                        case "mute": s.mute = kv.Value.ToLower().StartsWith("t"); break;
+                        case "solo": s.solo = kv.Value.ToLower().StartsWith("t"); break;
                     }
                 }
                 dst.Add(s);
@@ -283,6 +317,40 @@ namespace Satie
         static int CountIndent(string line)
         {
             int n = 0; while (n < line.Length && (line[n]==' ' || line[n]=='\t')) ++n; return n;
+        }
+
+        static string StripBlockComments(string text)
+        {
+            var lines = text.Split('\n');
+            var result = new StringBuilder();
+            bool inBlockComment = false;
+
+            foreach (string line in lines)
+            {
+                string trimmed = line.TrimStart();
+
+                // Check for block comment start
+                if (trimmed.StartsWith("comment", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    inBlockComment = true;
+                    continue;
+                }
+
+                // Check for block comment end
+                if (trimmed.StartsWith("endcomment", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    inBlockComment = false;
+                    continue;
+                }
+
+                // Skip lines inside block comments
+                if (inBlockComment)
+                    continue;
+
+                result.AppendLine(line);
+            }
+
+            return result.ToString();
         }
 
         static void ParseMove(Statement s,string v)

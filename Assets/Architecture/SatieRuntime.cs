@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Satie;
 
@@ -11,6 +12,19 @@ public class SatieRuntime : MonoBehaviour
 
     private readonly List<AudioSource> spawned  = new();
     private readonly List<Coroutine>   schedulers = new();
+
+    // Track persistent elements that should not be reset
+    private readonly Dictionary<AudioSource, bool> persistentSources = new();
+    private readonly Dictionary<Coroutine, bool> persistentSchedulers = new();
+
+    // Track which persistent statements are already running (by stable key)
+    private readonly HashSet<string> runningPersistentStatements = new();
+
+    // Map coroutines to their statement keys (for cleanup)
+    private readonly Dictionary<Coroutine, string> coroutineKeys = new();
+
+    // Map statement keys to their audio sources
+    private readonly Dictionary<string, List<AudioSource>> statementSources = new();
 
     // Components
     private SatieSpatialAudio spatialAudio;
@@ -41,24 +55,184 @@ public class SatieRuntime : MonoBehaviour
     {
         if (fullReset) HardReset();
 
-        foreach (var stmt in SatieParser.Parse(scriptFile.text))
+        // Parse all statements first to check if any are soloed
+        var allStatements = SatieParser.Parse(scriptFile.text);
+        bool anySolo = allStatements.Any(s => s.solo);
+
+        if (anySolo)
+            Debug.Log($"[SP] Solo mode active - only solo statements will play");
+
+        // Build a map of current statement keys and their persistent status
+        var currentPersistentKeys = new HashSet<string>();
+        int lineNumber = 0;
+        foreach (var stmt in allStatements)
+        {
             for (int i = 0; i < Mathf.Max(1, stmt.count); ++i)
-                schedulers.Add(StartCoroutine(RunStmt(stmt)));
+            {
+                string stmtKey = $"{lineNumber}_{stmt.kind}_{stmt.clip}_{i}";
+                if (stmt.persistent)
+                    currentPersistentKeys.Add(stmtKey);
+            }
+            lineNumber++;
+        }
+
+        // Stop any previously persistent statements that are no longer marked as persistent
+        var keysToStop = new List<string>();
+        foreach (var key in runningPersistentStatements)
+        {
+            if (!currentPersistentKeys.Contains(key))
+            {
+                keysToStop.Add(key);
+            }
+        }
+        foreach (var key in keysToStop)
+        {
+            Debug.Log($"[SP] Stopping previously persistent statement (no longer persistent): {key}");
+            StopPersistentStatement(key);
+        }
+
+        // Now process all statements
+        lineNumber = 0;
+        foreach (var stmt in allStatements)
+        {
+            // Determine if this statement should actually spawn based on solo logic
+            bool shouldSpawn = true;
+
+            if (anySolo)
+            {
+                // If anything is soloed, only spawn solo statements
+                shouldSpawn = stmt.solo;
+            }
+            // Note: mute doesn't affect spawning, only volume (handled in SpawnSource)
+
+            for (int i = 0; i < Mathf.Max(1, stmt.count); ++i)
+            {
+                // Generate stable key based on script content and position
+                // This key will be the same across parses if the script structure doesn't change
+                string stmtKey = $"{lineNumber}_{stmt.kind}_{stmt.clip}_{i}";
+
+                // Check if this persistent statement is already running
+                bool isAlreadyRunning = stmt.persistent && runningPersistentStatements.Contains(stmtKey);
+
+                // If unsoloed (when solo mode is active), stop it
+                if (!shouldSpawn)
+                {
+                    Debug.Log($"[SP] Skipping non-solo statement: {stmt.clip} (solo mode active)");
+                    if (isAlreadyRunning)
+                    {
+                        // Find and stop this persistent coroutine
+                        StopPersistentStatement(stmtKey);
+                    }
+                    continue;
+                }
+
+                // Update properties of already-running persistent statements
+                if (isAlreadyRunning)
+                {
+                    UpdateStatementMuteState(stmtKey, stmt.mute, anySolo && !stmt.solo);
+                    continue;
+                }
+
+                var coroutine = StartCoroutine(RunStmt(stmt, stmtKey, anySolo));
+                schedulers.Add(coroutine);
+
+                // Track the coroutine's key for cleanup
+                coroutineKeys[coroutine] = stmtKey;
+
+                // Track if this coroutine is persistent
+                if (stmt.persistent)
+                {
+                    persistentSchedulers[coroutine] = true;
+                    runningPersistentStatements.Add(stmtKey);
+                }
+            }
+            lineNumber++;
+        }
 
         Debug.Log($"[SP] Synced ({(fullReset ? "full" : "delta")}).");
     }
 
-    IEnumerator RunStmt(Statement s)
+    void UpdateStatementMuteState(string stmtKey, bool explicitMute, bool implicitMuteFromSolo)
     {
+        // Update the mute state of all audio sources for this statement
+        if (statementSources.TryGetValue(stmtKey, out var sources))
+        {
+            bool shouldBeMuted = explicitMute || implicitMuteFromSolo;
+            foreach (var src in sources)
+            {
+                if (src)
+                {
+                    src.mute = shouldBeMuted;
+                }
+            }
+        }
+    }
+
+    void StopPersistentStatement(string stmtKey)
+    {
+        // Find the coroutine with this key
+        Coroutine targetCoroutine = null;
+        foreach (var kvp in coroutineKeys)
+        {
+            if (kvp.Value == stmtKey)
+            {
+                targetCoroutine = kvp.Key;
+                break;
+            }
+        }
+
+        if (targetCoroutine != null)
+        {
+            // Stop the coroutine
+            StopCoroutine(targetCoroutine);
+
+            // Destroy all audio sources associated with this statement
+            if (statementSources.TryGetValue(stmtKey, out var sources))
+            {
+                foreach (var src in sources)
+                {
+                    if (src)
+                    {
+                        spawned.Remove(src);
+                        persistentSources.Remove(src);
+                        Destroy(src.gameObject);
+                    }
+                }
+                statementSources.Remove(stmtKey);
+            }
+
+            // Clean up tracking
+            schedulers.Remove(targetCoroutine);
+            persistentSchedulers.Remove(targetCoroutine);
+            coroutineKeys.Remove(targetCoroutine);
+            runningPersistentStatements.Remove(stmtKey);
+
+            Debug.Log($"[SP] Stopped persistent statement (muted/unsoloed): {stmtKey}");
+        }
+    }
+
+    IEnumerator RunStmt(Statement s, string stmtKey, bool anySoloActive)
+    {
+        // Initialize source list for this statement
+        if (!statementSources.ContainsKey(stmtKey))
+            statementSources[stmtKey] = new List<AudioSource>();
+
         yield return new WaitForSeconds(s.starts_at.Sample());
-        if (s.kind == "loop")  yield return HandleLoop(s);
-        else yield return HandleOneShot(s);
+        if (s.kind == "loop")  yield return HandleLoop(s, stmtKey, anySoloActive);
+        else yield return HandleOneShot(s, stmtKey, anySoloActive);
+
+        // Cleanup when statement finishes
+        statementSources.Remove(stmtKey);
     }
     
-    IEnumerator HandleLoop(Statement s)
+    IEnumerator HandleLoop(Statement s, string stmtKey, bool anySoloActive)
     {
-        var src = SpawnSource(s);
+        var src = SpawnSource(s, anySoloActive);
         if (!src) yield break;
+
+        // Track this source for the statement
+        if (statementSources.ContainsKey(stmtKey))
+            statementSources[stmtKey].Add(src);
 
         if (s.duration.isSet)
         {
@@ -67,7 +241,7 @@ public class SatieRuntime : MonoBehaviour
         }
     }
     
-    IEnumerator HandleOneShot(Statement s)
+    IEnumerator HandleOneShot(Statement s, string stmtKey, bool anySoloActive)
     {
         Debug.Log($"[HandleOneShot] clip={s.clip}, every.isSet={s.every.isSet}, every.min={s.every.min}, every.max={s.every.max}");
 
@@ -75,7 +249,9 @@ public class SatieRuntime : MonoBehaviour
         if (!s.every.isSet)
         {
             Debug.Log($"[HandleOneShot] Playing once and exiting");
-            var src = SpawnSource(s);
+            var src = SpawnSource(s, anySoloActive);
+            if (src && statementSources.ContainsKey(stmtKey))
+                statementSources[stmtKey].Add(src);
             yield break;
         }
 
@@ -87,15 +263,19 @@ public class SatieRuntime : MonoBehaviour
         {
             if (s.overlap)
             {
-                var src = SpawnSource(s);
+                var src = SpawnSource(s, anySoloActive);
                 if (!src) yield break;
+                if (statementSources.ContainsKey(stmtKey))
+                    statementSources[stmtKey].Add(src);
             }
             else
             {
                 if (persistent == null)
                 {
-                    persistent = SpawnSource(s);
+                    persistent = SpawnSource(s, anySoloActive);
                     if (!persistent) yield break;
+                    if (statementSources.ContainsKey(stmtKey))
+                        statementSources[stmtKey].Add(persistent);
                 }
 
                 string clipName = SatieUtil.ResolveClip(s.clip);
@@ -133,7 +313,7 @@ public class SatieRuntime : MonoBehaviour
         }
     }
     
-    AudioSource SpawnSource(Statement s)
+    AudioSource SpawnSource(Statement s, bool anySoloActive)
     {
         string clipName = SatieUtil.ResolveClip(s.clip);
         var clip = Resources.Load<AudioClip>(SatieParser.PathFor(clipName));
@@ -150,8 +330,16 @@ public class SatieRuntime : MonoBehaviour
         var src = go.AddComponent<AudioSource>();
         spawned.Add(src);
 
+        // Track if this source is persistent
+        if (s.persistent)
+            persistentSources[src] = true;
+
         src.clip = clip;
         src.loop = (s.kind == "loop");
+
+        // Set mute state: explicit mute flag OR implicitly muted if solo is active and this isn't soloed
+        bool shouldBeMuted = s.mute || (anySoloActive && !s.solo);
+        src.mute = shouldBeMuted;
 
         // Initialize volume based on interpolation type to avoid clicks
         if (s.volumeInterpolation != null &&
@@ -366,12 +554,57 @@ public class SatieRuntime : MonoBehaviour
 
     void HardReset()
     {
+        // Stop non-persistent coroutines
+        var coroutinesToRemove = new List<Coroutine>();
         foreach (var co in schedulers)
-            if (co != null) StopCoroutine(co);
-        schedulers.Clear();
+        {
+            if (co != null)
+            {
+                // Check if this coroutine is persistent
+                if (!persistentSchedulers.ContainsKey(co) || !persistentSchedulers[co])
+                {
+                    StopCoroutine(co);
+                    coroutinesToRemove.Add(co);
+                }
+            }
+        }
 
+        // Remove stopped coroutines from the list and clean up their keys
+        foreach (var co in coroutinesToRemove)
+        {
+            schedulers.Remove(co);
+            persistentSchedulers.Remove(co);
+
+            // Remove the key from runningPersistentStatements if this was persistent
+            if (coroutineKeys.TryGetValue(co, out string key))
+            {
+                runningPersistentStatements.Remove(key);
+                coroutineKeys.Remove(co);
+            }
+        }
+
+        // Destroy non-persistent audio sources
+        var sourcesToRemove = new List<AudioSource>();
         foreach (var src in spawned)
-            if (src) Destroy(src.gameObject);
-        spawned.Clear();
+        {
+            if (src)
+            {
+                // Check if this source is persistent
+                if (!persistentSources.ContainsKey(src) || !persistentSources[src])
+                {
+                    Destroy(src.gameObject);
+                    sourcesToRemove.Add(src);
+                }
+            }
+        }
+
+        // Remove destroyed sources from the list
+        foreach (var src in sourcesToRemove)
+        {
+            spawned.Remove(src);
+            persistentSources.Remove(src);
+        }
+
+        Debug.Log($"[SP] HardReset complete. Persistent: {schedulers.Count} coroutines, {spawned.Count} sources.");
     }
 }
