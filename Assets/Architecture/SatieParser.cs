@@ -90,15 +90,37 @@ namespace Satie
             var lines   = script.Replace("\r\n", "\n").Split('\n');
 
             GroupCtx grp = null;
+            bool inBlockComment = false;
 
             for (int i = 0; i < lines.Length; ++i)
             {
                 string raw  = lines[i];
-                if (string.IsNullOrWhiteSpace(raw) || raw.TrimStart().StartsWith("#"))
+                string trimmed = raw.TrimStart();
+
+                // Check for block comment start
+                if (trimmed.StartsWith("comment", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    inBlockComment = true;
+                    continue;
+                }
+
+                // Check for block comment end
+                if (trimmed.StartsWith("endcomment", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    inBlockComment = false;
+                    continue;
+                }
+
+                // Skip lines inside block comments
+                if (inBlockComment)
+                    continue;
+
+                // Skip empty lines and single-line comments
+                if (string.IsNullOrWhiteSpace(raw) || trimmed.StartsWith("#"))
                     continue;
 
                 int    indent = CountIndent(raw);
-                string body   = raw.TrimStart();
+                string body   = trimmed;
 
                 //  close grp?
                 if (grp != null &&
@@ -188,7 +210,10 @@ namespace Satie
             else if (m.Groups["e"].Success)
                 s.every = new RangeOrValue(float.Parse(m.Groups["e"].Value));
 
-            foreach (Match p in PropRx.Matches(m.Groups["block"].Value))
+            // Strip block comments from the property block before parsing
+            string propsBlock = StripBlockComments(m.Groups["block"].Value);
+
+            foreach (Match p in PropRx.Matches(propsBlock))
             {
                 string k = p.Groups["key"].Value.ToLower();
                 string v = p.Groups["val"].Value.Trim();
@@ -286,6 +311,40 @@ namespace Satie
         static int CountIndent(string line)
         {
             int n = 0; while (n < line.Length && (line[n]==' ' || line[n]=='\t')) ++n; return n;
+        }
+
+        static string StripBlockComments(string text)
+        {
+            var lines = text.Split('\n');
+            var result = new StringBuilder();
+            bool inBlockComment = false;
+
+            foreach (string line in lines)
+            {
+                string trimmed = line.TrimStart();
+
+                // Check for block comment start
+                if (trimmed.StartsWith("comment", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    inBlockComment = true;
+                    continue;
+                }
+
+                // Check for block comment end
+                if (trimmed.StartsWith("endcomment", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    inBlockComment = false;
+                    continue;
+                }
+
+                // Skip lines inside block comments
+                if (inBlockComment)
+                    continue;
+
+                result.AppendLine(line);
+            }
+
+            return result.ToString();
         }
 
         static void ParseMove(Statement s,string v)
