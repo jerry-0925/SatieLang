@@ -1,13 +1,18 @@
 loop "music/beat":
     volume = 0.5
-    pitch = 1
+    pitch = 0.5
+
+loop "music/beat":
+    volume = 0.25
+    comment
+    pitch = 2
     fade_in = 10to15
+    endcomment
     move = walk, -10to10, -10to10, 0.05to0.2
     visual = trail
 
 loop "music/drone":
-    volume = 0.5
+    volume = 0.1
     pitch = 1
     move = walk, -10to10, -10to10, 0.01to0.02
     visual = trail
-    persistent = true
