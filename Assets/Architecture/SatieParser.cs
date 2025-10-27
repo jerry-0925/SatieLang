@@ -16,6 +16,7 @@ namespace Satie
         public RangeOrValue volume = new(1f);
         public RangeOrValue pitch = new(1f);
         public bool overlap = false;
+        public bool persistent = false;
         public RangeOrValue fade_in = RangeOrValue.Null;
         public RangeOrValue fade_out = RangeOrValue.Null;
 
@@ -211,6 +212,7 @@ namespace Satie
                     case "fade_out": s.fade_out = RangeOrValue.Parse(v); break;
                     case "every": s.every = RangeOrValue.Parse(v); break;
                     case "overlap": s.overlap = v.ToLower().StartsWith("t"); break;
+                    case "persistent": s.persistent = v.ToLower().StartsWith("t"); break;
                     case "visual": ParseVisual(s, v); break;
                     case "move": ParseMove(s,v); break;
                 }
@@ -274,6 +276,7 @@ namespace Satie
                         case "fade_out" when !s.fade_out.isSet: s.fade_out = RangeOrValue.Parse(kv.Value); break;
                         case "every" when !s.every.isSet: s.every = RangeOrValue.Parse(kv.Value); break;
                         case "overlap": s.overlap = kv.Value.ToLower().StartsWith("t"); break;
+                        case "persistent": s.persistent = kv.Value.ToLower().StartsWith("t"); break;
                     }
                 }
                 dst.Add(s);

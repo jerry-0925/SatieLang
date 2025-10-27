@@ -12,6 +12,16 @@ public class SatieRuntime : MonoBehaviour
     private readonly List<AudioSource> spawned  = new();
     private readonly List<Coroutine>   schedulers = new();
 
+    // Track persistent elements that should not be reset
+    private readonly Dictionary<AudioSource, bool> persistentSources = new();
+    private readonly Dictionary<Coroutine, bool> persistentSchedulers = new();
+
+    // Track which persistent statements are already running (by stable key)
+    private readonly HashSet<string> runningPersistentStatements = new();
+
+    // Map coroutines to their statement keys (for cleanup)
+    private readonly Dictionary<Coroutine, string> coroutineKeys = new();
+
     // Components
     private SatieSpatialAudio spatialAudio;
     
@@ -41,18 +51,50 @@ public class SatieRuntime : MonoBehaviour
     {
         if (fullReset) HardReset();
 
+        int lineNumber = 0; // Track position in the original script
         foreach (var stmt in SatieParser.Parse(scriptFile.text))
+        {
             for (int i = 0; i < Mathf.Max(1, stmt.count); ++i)
-                schedulers.Add(StartCoroutine(RunStmt(stmt)));
+            {
+                // Generate stable key based on script content and position
+                // This key will be the same across parses if the script structure doesn't change
+                string stmtKey = $"{lineNumber}_{stmt.kind}_{stmt.clip}_{i}";
+
+                // Skip if this persistent statement is already running
+                if (stmt.persistent && runningPersistentStatements.Contains(stmtKey))
+                    continue;
+
+                var coroutine = StartCoroutine(RunStmt(stmt, stmtKey));
+                schedulers.Add(coroutine);
+
+                // Track the coroutine's key for cleanup
+                coroutineKeys[coroutine] = stmtKey;
+
+                // Track if this coroutine is persistent
+                if (stmt.persistent)
+                {
+                    persistentSchedulers[coroutine] = true;
+                    runningPersistentStatements.Add(stmtKey);
+                }
+            }
+            lineNumber++;
+        }
 
         Debug.Log($"[SP] Synced ({(fullReset ? "full" : "delta")}).");
     }
 
-    IEnumerator RunStmt(Statement s)
+    IEnumerator RunStmt(Statement s, string stmtKey)
     {
         yield return new WaitForSeconds(s.starts_at.Sample());
         if (s.kind == "loop")  yield return HandleLoop(s);
         else yield return HandleOneShot(s);
+
+        // When a non-persistent coroutine finishes naturally, just exit
+        // Persistent keys are only removed when explicitly stopped in HardReset
+        if (!s.persistent)
+        {
+            // Could do cleanup here for non-persistent if needed
+        }
     }
     
     IEnumerator HandleLoop(Statement s)
@@ -149,6 +191,10 @@ public class SatieRuntime : MonoBehaviour
 
         var src = go.AddComponent<AudioSource>();
         spawned.Add(src);
+
+        // Track if this source is persistent
+        if (s.persistent)
+            persistentSources[src] = true;
 
         src.clip = clip;
         src.loop = (s.kind == "loop");
@@ -366,12 +412,57 @@ public class SatieRuntime : MonoBehaviour
 
     void HardReset()
     {
+        // Stop non-persistent coroutines
+        var coroutinesToRemove = new List<Coroutine>();
         foreach (var co in schedulers)
-            if (co != null) StopCoroutine(co);
-        schedulers.Clear();
+        {
+            if (co != null)
+            {
+                // Check if this coroutine is persistent
+                if (!persistentSchedulers.ContainsKey(co) || !persistentSchedulers[co])
+                {
+                    StopCoroutine(co);
+                    coroutinesToRemove.Add(co);
+                }
+            }
+        }
 
+        // Remove stopped coroutines from the list and clean up their keys
+        foreach (var co in coroutinesToRemove)
+        {
+            schedulers.Remove(co);
+            persistentSchedulers.Remove(co);
+
+            // Remove the key from runningPersistentStatements if this was persistent
+            if (coroutineKeys.TryGetValue(co, out string key))
+            {
+                runningPersistentStatements.Remove(key);
+                coroutineKeys.Remove(co);
+            }
+        }
+
+        // Destroy non-persistent audio sources
+        var sourcesToRemove = new List<AudioSource>();
         foreach (var src in spawned)
-            if (src) Destroy(src.gameObject);
-        spawned.Clear();
+        {
+            if (src)
+            {
+                // Check if this source is persistent
+                if (!persistentSources.ContainsKey(src) || !persistentSources[src])
+                {
+                    Destroy(src.gameObject);
+                    sourcesToRemove.Add(src);
+                }
+            }
+        }
+
+        // Remove destroyed sources from the list
+        foreach (var src in sourcesToRemove)
+        {
+            spawned.Remove(src);
+            persistentSources.Remove(src);
+        }
+
+        Debug.Log($"[SP] HardReset complete. Persistent: {schedulers.Count} coroutines, {spawned.Count} sources.");
     }
 }
