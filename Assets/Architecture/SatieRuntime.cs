@@ -20,9 +20,14 @@ public class SatieRuntime : MonoBehaviour
     [SerializeField] [Range(0f, 1f)] private float masterVolume = 1f;
     [SerializeField] private bool masterMute = false;
 
+    // Recording
+    [Header("Ambisonic Recording")]
+    [Tooltip("Reference to AmbisonicRecorder component for scene recording (auto-detected if not set)")]
+    [SerializeField] private AmbisonicRecorder ambisonicRecorder;
+
     // Components
     private SatieSpatialAudio spatialAudio;
-    
+
     void Start()
     {
         if (!scriptFile)
@@ -36,6 +41,16 @@ public class SatieRuntime : MonoBehaviour
 
         // Get spatial audio component
         spatialAudio = GetComponent<SatieSpatialAudio>();
+
+        // Auto-detect ambisonic recorder if not set
+        if (ambisonicRecorder == null)
+        {
+            ambisonicRecorder = FindObjectOfType<AmbisonicRecorder>();
+            if (ambisonicRecorder != null)
+            {
+                Debug.Log("[SatieRuntime] Auto-detected AmbisonicRecorder");
+            }
+        }
 
         Sync(fullReset: true);
     }
@@ -357,6 +372,17 @@ public class SatieRuntime : MonoBehaviour
         if (spatialAudio != null && s.wanderType != Statement.WanderType.None)
         {
             spatialAudio.AddSteamAudioComponents(go);
+        }
+
+        // Add ambisonic encoder if recorder is present
+        if (ambisonicRecorder != null)
+        {
+            go.AddComponent<AmbisonicSourceEncoder>();
+            Debug.Log($"[SatieRuntime] Added AmbisonicSourceEncoder to {go.name}");
+        }
+        else
+        {
+            Debug.LogWarning($"[SatieRuntime] ambisonicRecorder is NULL, cannot add encoder to {go.name}");
         }
 
         // Handle initial volume based on interpolation type

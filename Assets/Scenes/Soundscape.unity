@@ -228,6 +228,7 @@ GameObject:
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
   - component: {fileID: 963194229}
+  - component: {fileID: 963194230}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -338,6 +339,25 @@ MonoBehaviour:
         z: 0
       radius: 0
   mProbeBatchesUsed: []
+--- !u!114 &963194230
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7f3c9d4e8b2f4a4c9e1d7f8a3b6c9e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isRecording: 1
+  outputFileName: Radio
+  sampleRate: 48000
+  autoAddEncoders: 1
+  recordingDuration: 0
+  lastSavedPath: 
+  activeEncoders: 0
 --- !u!1 &1228820742
 GameObject:
   m_ObjectHideFlags: 0
@@ -370,10 +390,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 571ab9772484754459a267c6b3e548c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scriptFile: {fileID: 2811297602134710623, guid: 50d69df2bc2f94a8e82320fcb4e202d6, type: 3}
+  scriptFile: {fileID: 2811297602134710623, guid: cafcd5ceda28646ae83030bcb3c1aa11, type: 3}
   mixerGroups: []
   masterVolume: 1
   masterMute: 0
+  ambisonicRecorder: {fileID: 0}
 --- !u!4 &1228820744
 Transform:
   m_ObjectHideFlags: 0

@@ -1,0 +1,47 @@
+comment
+RadioPlay.sat
+HomeWork 3 - 220A: Computer Generated Sound
+This program is written in the Satie Domain Specific Language for Audio in Unity
+endcomment
+
+4 * oneshot "random/radio" every 5to25:
+    volume = gobetween(0to0.01and0.1to0.2 as inquad in 20)
+    pitch = gobetween(0.5and1.2to1.5 as inquad in 30)
+    move = walk, -20to20, -60to60, 0.1to0.5
+    visual = cube
+
+group phrase:
+volume = goto(1and0 as inquad in 120)
+    2 * oneshot "musical phrases/1to3" every 15to25:
+        starts_at = 10
+        pitch = 0.5
+        volume = goto(0and0.4 as inquad in 2)
+        move = fly, -25to15, 0to10, -25to25, 0.2to0.6
+        visual = trail
+    2 * oneshot "musical phrases/1to3" every 15to25:
+        starts_at = 20
+        pitch = 2
+        volume = goto(0and0.2 as inquad in 2)
+        move = fly, -15to15, 0to10, -5to5, 0.2to0.6
+        visual = trail
+
+group drones:
+volume = goto(1and0 as inquad in 120)
+    loop "music/drone":
+        volume = volume = goto(0and0.3 as inbucic in 15)
+        pitch = 0.5
+        move = fly, -15to15, 0to10, -5to5, 0.2to0.6
+        visual = sphere
+    loop "music/drone":
+        starts_at = 20
+        volume = volume = goto(0and0.3 as inbucic in 15)
+        pitch = 1
+        move = fly, -15to15, 0to10, -5to5, 0.2to0.6
+        visual = sphere
+    loop "music/drone":
+        starts_at = 40
+        volume = volume = goto(0and0.3 as inbucic in 15)
+        pitch = 1.5
+        move = fly, -15to15, 0to10, -5to5, 0.2to0.6
+        visual = sphere
+   
