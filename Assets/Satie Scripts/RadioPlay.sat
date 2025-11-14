@@ -4,6 +4,7 @@ HomeWork 3 - 220A: Computer Generated Sound
 This program is written in the Satie Domain Specific Language for Audio in Unity
 endcomment
 
+comment
 4 * oneshot "random/radio" every 5to25:
     volume = gobetween(0to0.01and0.1to0.2 as inquad in 20)
     pitch = gobetween(0.5and1.2to1.5 as inquad in 30)
@@ -44,4 +45,9 @@ volume = goto(1and0 as inquad in 120)
         pitch = 1.5
         move = fly, -15to15, 0to10, -5to5, 0.2to0.6
         visual = sphere
+
+endcomment
+
+loop "random/hola":
+    volume = 1
    

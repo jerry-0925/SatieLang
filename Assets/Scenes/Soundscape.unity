@@ -317,7 +317,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6fd9ebf1401392e4bbd47fea32f47642, type: 3}
   m_Name: 
@@ -346,13 +346,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a7f3c9d4e8b2f4a4c9e1d7f8a3b6c9e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  isRecording: 1
-  outputFileName: Radio
+  isRecording: 0
+  outputFileName: zz
   sampleRate: 48000
   autoAddEncoders: 1
   recordingDuration: 0

@@ -40,8 +40,16 @@ public class AmbisonicRecorder : MonoBehaviour
     private object lockObject = new object();
     private double recordingStartTime = 0; // DSP time when recording started
 
+    // Temporary buffers for collecting encoder contributions per frame
+    private float[] frameBufferW;
+    private float[] frameBufferX;
+    private float[] frameBufferY;
+    private float[] frameBufferZ;
+    private int currentFrameSize = 0;
+
     // All encoders in the scene
     private List<AmbisonicSourceEncoder> encoders = new List<AmbisonicSourceEncoder>();
+    private AmbisonicSourceEncoder[] encodersSnapshot = new AmbisonicSourceEncoder[0]; // Thread-safe snapshot for audio thread
 
     void Start()
     {
@@ -84,6 +92,58 @@ public class AmbisonicRecorder : MonoBehaviour
     }
 
     /// <summary>
+    /// Called continuously by Unity's audio thread while this component is on an AudioListener.
+    /// This ensures we capture every audio frame, even when individual sources aren't playing.
+    /// </summary>
+    void OnAudioFilterRead(float[] data, int channels)
+    {
+        if (!isRecording) return;
+
+        int frames = data.Length / channels;
+
+        // Ensure frame buffers are allocated
+        if (frameBufferW == null || frameBufferW.Length < frames)
+        {
+            currentFrameSize = frames;
+            frameBufferW = new float[frames];
+            frameBufferX = new float[frames];
+            frameBufferY = new float[frames];
+            frameBufferZ = new float[frames];
+        }
+
+        // Clear frame buffers
+        System.Array.Clear(frameBufferW, 0, frames);
+        System.Array.Clear(frameBufferX, 0, frames);
+        System.Array.Clear(frameBufferY, 0, frames);
+        System.Array.Clear(frameBufferZ, 0, frames);
+
+        // Collect contributions from all encoders (use snapshot to avoid threading issues)
+        var snapshot = encodersSnapshot; // Read the reference atomically
+        foreach (var encoder in snapshot)
+        {
+            if (encoder != null)
+            {
+                encoder.GetEncodedOutput(frameBufferW, frameBufferX, frameBufferY, frameBufferZ, frames);
+            }
+        }
+
+        // Write the mixed frame to our recording buffer
+        lock (lockObject)
+        {
+            int startIndex = recordedSamplesW.Count;
+            for (int i = 0; i < frames; i++)
+            {
+                recordedSamplesW.Add(frameBufferW[i]);
+                recordedSamplesX.Add(frameBufferX[i]);
+                recordedSamplesY.Add(frameBufferY[i]);
+                recordedSamplesZ.Add(frameBufferZ[i]);
+            }
+        }
+
+        // Don't modify the data - we're just recording, not filtering
+    }
+
+    /// <summary>
     /// Automatically add AmbisonicSourceEncoder to all AudioSources in the scene.
     /// </summary>
     void AddEncodersToAllSources()
@@ -117,6 +177,9 @@ public class AmbisonicRecorder : MonoBehaviour
         encoders.Clear();
         encoders.AddRange(FindObjectsOfType<AmbisonicSourceEncoder>());
         activeEncoders = encoders.Count;
+
+        // Create a thread-safe snapshot for the audio thread
+        encodersSnapshot = encoders.ToArray();
     }
 
     void StartRecording()
@@ -149,45 +212,6 @@ public class AmbisonicRecorder : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Register encoded audio from an encoder.
-    /// Called by AmbisonicSourceEncoder from the audio thread.
-    /// </summary>
-    public void SubmitEncodedAudio(float[] w, float[] x, float[] y, float[] z, int frames, double dspTime)
-    {
-        if (!isRecording) return;
-
-        // Calculate the sample offset based on DSP time
-        double elapsedTime = dspTime - recordingStartTime;
-        int sampleOffset = (int)(elapsedTime * sampleRate);
-
-        // Add these samples to our recording buffers
-        lock (lockObject)
-        {
-            // Ensure buffers are large enough
-            int requiredSize = sampleOffset + frames;
-            while (recordedSamplesW.Count < requiredSize)
-            {
-                recordedSamplesW.Add(0f);
-                recordedSamplesX.Add(0f);
-                recordedSamplesY.Add(0f);
-                recordedSamplesZ.Add(0f);
-            }
-
-            // Mix in this encoder's contribution at the correct time position
-            for (int i = 0; i < frames; i++)
-            {
-                int index = sampleOffset + i;
-                if (index >= 0 && index < recordedSamplesW.Count)
-                {
-                    recordedSamplesW[index] += w[i];
-                    recordedSamplesX[index] += x[i];
-                    recordedSamplesY[index] += y[i];
-                    recordedSamplesZ[index] += z[i];
-                }
-            }
-        }
-    }
 
     /// <summary>
     /// Saves the recorded ambisonic audio as a 4-channel WAV file (B-format).
@@ -214,18 +238,40 @@ public class AmbisonicRecorder : MonoBehaviour
             string fullPath = Path.Combine(outputDir, filename);
             Debug.Log($"[AmbisonicRecorder] Full path: {fullPath}");
 
-            // Interleave the 4 channels (W, X, Y, Z)
+            // Find the peak amplitude across all channels for normalization
             int totalSamples = recordedSamplesW.Count;
             Debug.Log($"[AmbisonicRecorder] Total samples to write: {totalSamples}");
 
+            float maxAmplitude = 0f;
+            for (int i = 0; i < totalSamples; i++)
+            {
+                maxAmplitude = Mathf.Max(maxAmplitude, Mathf.Abs(recordedSamplesW[i]));
+                maxAmplitude = Mathf.Max(maxAmplitude, Mathf.Abs(recordedSamplesX[i]));
+                maxAmplitude = Mathf.Max(maxAmplitude, Mathf.Abs(recordedSamplesY[i]));
+                maxAmplitude = Mathf.Max(maxAmplitude, Mathf.Abs(recordedSamplesZ[i]));
+            }
+
+            // Calculate normalization factor (leave some headroom to prevent clipping)
+            float normalizationFactor = 1f;
+            if (maxAmplitude > 0.95f) // Only normalize if we're close to clipping
+            {
+                normalizationFactor = 0.95f / maxAmplitude; // 0.95 gives us 5% headroom
+                Debug.Log($"[AmbisonicRecorder] Normalizing audio: peak {maxAmplitude:F3} -> factor {normalizationFactor:F3}");
+            }
+            else
+            {
+                Debug.Log($"[AmbisonicRecorder] No normalization needed, peak amplitude: {maxAmplitude:F3}");
+            }
+
+            // Interleave and normalize the 4 channels (W, X, Y, Z)
             float[] interleavedData = new float[totalSamples * 4];
 
             for (int i = 0; i < totalSamples; i++)
             {
-                interleavedData[i * 4 + 0] = recordedSamplesW[i]; // W
-                interleavedData[i * 4 + 1] = recordedSamplesX[i]; // X
-                interleavedData[i * 4 + 2] = recordedSamplesY[i]; // Y
-                interleavedData[i * 4 + 3] = recordedSamplesZ[i]; // Z
+                interleavedData[i * 4 + 0] = recordedSamplesW[i] * normalizationFactor; // W
+                interleavedData[i * 4 + 1] = recordedSamplesX[i] * normalizationFactor; // X
+                interleavedData[i * 4 + 2] = recordedSamplesY[i] * normalizationFactor; // Y
+                interleavedData[i * 4 + 3] = recordedSamplesZ[i] * normalizationFactor; // Z
             }
 
             Debug.Log($"[AmbisonicRecorder] Calling WriteWAVFile...");

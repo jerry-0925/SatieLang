@@ -132,24 +132,25 @@ public class AmbisonicSourceEncoder : MonoBehaviour
             outputZ[i] = monoSample * z;
         }
 
-        // Submit to recorder with current DSP time for proper synchronization
-        recorder.SubmitEncodedAudio(outputW, outputX, outputY, outputZ, frames, AudioSettings.dspTime);
+        // Note: The recorder will pull this data via GetEncodedOutput()
     }
 
     /// <summary>
-    /// Get the current encoded B-format output.
-    /// Call this from the main thread to retrieve encoded audio.
+    /// Get the current encoded B-format output and MIX it into the provided buffers.
+    /// Called from the audio thread by AmbisonicRecorder.
     /// </summary>
     public void GetEncodedOutput(float[] w, float[] x, float[] y, float[] z, int frames)
     {
         if (outputW == null || frames > currentBufferSize) return;
 
-        for (int i = 0; i < frames; i++)
+        // Mix our encoded output into the provided buffers
+        int samplesToMix = Mathf.Min(frames, currentBufferSize);
+        for (int i = 0; i < samplesToMix; i++)
         {
-            w[i] = outputW[i];
-            x[i] = outputX[i];
-            y[i] = outputY[i];
-            z[i] = outputZ[i];
+            w[i] += outputW[i];
+            x[i] += outputX[i];
+            y[i] += outputY[i];
+            z[i] += outputZ[i];
         }
     }
 }
