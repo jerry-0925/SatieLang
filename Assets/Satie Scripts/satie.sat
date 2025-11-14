@@ -1,0 +1,17 @@
+comment
+Randomly selects and plays bird sounds from a folder with 5 samples
+Triggers birds at randomized intervals between 2 and 10 seconds.
+Applies randomized pitch and volume per event.
+Moves each bird smoothly in 3D space (you can use perlin noise or brownian motion)
+Draws a visual trail for each moving bird.
+Fade In the entire soundscape in 5 seconds
+Stops all playback and clears visuals after 60 seconds.
+endcomment
+
+5 * oneshot "bird/1to5" every 2to10:
+    fade_in = 5
+    volume = 0.1to0.5
+    pitch = 0.5to1.1
+    move = fly, -10to10, 0to20, -10to10, 0.5to1
+    visual = trail
+    duration = 60

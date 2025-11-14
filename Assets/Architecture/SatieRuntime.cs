@@ -10,21 +10,15 @@ public class SatieRuntime : MonoBehaviour
     [SerializeField] private TextAsset scriptFile;
     public TextAsset ScriptFile => scriptFile;
 
-    private readonly List<AudioSource> spawned  = new();
-    private readonly List<Coroutine>   schedulers = new();
+    // Track manager handles all voice lifecycle
+    private SatieTrackManager trackManager;
 
-    // Track persistent elements that should not be reset
-    private readonly Dictionary<AudioSource, bool> persistentSources = new();
-    private readonly Dictionary<Coroutine, bool> persistentSchedulers = new();
+    // Mixer groups for DAW-style control
+    [SerializeField] private List<SatieMixerGroup> mixerGroups = new List<SatieMixerGroup>();
 
-    // Track which persistent statements are already running (by stable key)
-    private readonly HashSet<string> runningPersistentStatements = new();
-
-    // Map coroutines to their statement keys (for cleanup)
-    private readonly Dictionary<Coroutine, string> coroutineKeys = new();
-
-    // Map statement keys to their audio sources
-    private readonly Dictionary<string, List<AudioSource>> statementSources = new();
+    // Master controls
+    [SerializeField] [Range(0f, 1f)] private float masterVolume = 1f;
+    [SerializeField] private bool masterMute = false;
 
     // Components
     private SatieSpatialAudio spatialAudio;
@@ -36,6 +30,9 @@ public class SatieRuntime : MonoBehaviour
             Debug.LogError("SatieRuntime: TextAsset missing.");
             return;
         }
+
+        // Initialize track manager BEFORE Sync
+        trackManager = new SatieTrackManager(this);
 
         // Get spatial audio component
         spatialAudio = GetComponent<SatieSpatialAudio>();
@@ -76,19 +73,19 @@ public class SatieRuntime : MonoBehaviour
             lineNumber++;
         }
 
-        // Stop any previously persistent statements that are no longer marked as persistent
+        // Stop any previously persistent tracks that are no longer marked as persistent
         var keysToStop = new List<string>();
-        foreach (var key in runningPersistentStatements)
+        foreach (var track in trackManager.GetPersistentTracks())
         {
-            if (!currentPersistentKeys.Contains(key))
+            if (!currentPersistentKeys.Contains(track.Key))
             {
-                keysToStop.Add(key);
+                keysToStop.Add(track.Key);
             }
         }
         foreach (var key in keysToStop)
         {
-            Debug.Log($"[SP] Stopping previously persistent statement (no longer persistent): {key}");
-            StopPersistentStatement(key);
+            Debug.Log($"[SP] Stopping previously persistent track (no longer persistent): {key}");
+            trackManager.StopTrack(key);
         }
 
         // Now process all statements
@@ -111,8 +108,8 @@ public class SatieRuntime : MonoBehaviour
                 // This key will be the same across parses if the script structure doesn't change
                 string stmtKey = $"{lineNumber}_{stmt.kind}_{stmt.clip}_{i}";
 
-                // Check if this persistent statement is already running
-                bool isAlreadyRunning = stmt.persistent && runningPersistentStatements.Contains(stmtKey);
+                // Check if this track is already running
+                bool isAlreadyRunning = trackManager.HasTrack(stmtKey);
 
                 // If unsoloed (when solo mode is active), stop it
                 if (!shouldSpawn)
@@ -120,31 +117,22 @@ public class SatieRuntime : MonoBehaviour
                     Debug.Log($"[SP] Skipping non-solo statement: {stmt.clip} (solo mode active)");
                     if (isAlreadyRunning)
                     {
-                        // Find and stop this persistent coroutine
-                        StopPersistentStatement(stmtKey);
+                        trackManager.StopTrack(stmtKey);
                     }
                     continue;
                 }
 
-                // Update properties of already-running persistent statements
+                // Update properties of already-running tracks
                 if (isAlreadyRunning)
                 {
-                    UpdateStatementMuteState(stmtKey, stmt.mute, anySolo && !stmt.solo);
+                    UpdateTrackMuteState(stmtKey, stmt.mute, anySolo && !stmt.solo);
                     continue;
                 }
 
-                var coroutine = StartCoroutine(RunStmt(stmt, stmtKey, anySolo));
-                schedulers.Add(coroutine);
-
-                // Track the coroutine's key for cleanup
-                coroutineKeys[coroutine] = stmtKey;
-
-                // Track if this coroutine is persistent
-                if (stmt.persistent)
-                {
-                    persistentSchedulers[coroutine] = true;
-                    runningPersistentStatements.Add(stmtKey);
-                }
+                // Create new track
+                var track = trackManager.CreateTrack(stmtKey, stmt);
+                var coroutine = StartCoroutine(RunStmt(track, anySolo));
+                track.Coroutine = coroutine;
             }
             lineNumber++;
         }
@@ -152,97 +140,55 @@ public class SatieRuntime : MonoBehaviour
         Debug.Log($"[SP] Synced ({(fullReset ? "full" : "delta")}).");
     }
 
-    void UpdateStatementMuteState(string stmtKey, bool explicitMute, bool implicitMuteFromSolo)
+    void UpdateTrackMuteState(string stmtKey, bool explicitMute, bool implicitMuteFromSolo)
     {
-        // Update the mute state of all audio sources for this statement
-        if (statementSources.TryGetValue(stmtKey, out var sources))
-        {
-            bool shouldBeMuted = explicitMute || implicitMuteFromSolo;
-            foreach (var src in sources)
-            {
-                if (src)
-                {
-                    src.mute = shouldBeMuted;
-                }
-            }
-        }
+        bool shouldBeMuted = explicitMute || implicitMuteFromSolo;
+        trackManager.SetTrackMute(stmtKey, shouldBeMuted);
     }
 
-    void StopPersistentStatement(string stmtKey)
+    IEnumerator RunStmt(SatieTrack track, bool anySoloActive)
     {
-        // Find the coroutine with this key
-        Coroutine targetCoroutine = null;
-        foreach (var kvp in coroutineKeys)
-        {
-            if (kvp.Value == stmtKey)
-            {
-                targetCoroutine = kvp.Key;
-                break;
-            }
-        }
-
-        if (targetCoroutine != null)
-        {
-            // Stop the coroutine
-            StopCoroutine(targetCoroutine);
-
-            // Destroy all audio sources associated with this statement
-            if (statementSources.TryGetValue(stmtKey, out var sources))
-            {
-                foreach (var src in sources)
-                {
-                    if (src)
-                    {
-                        spawned.Remove(src);
-                        persistentSources.Remove(src);
-                        Destroy(src.gameObject);
-                    }
-                }
-                statementSources.Remove(stmtKey);
-            }
-
-            // Clean up tracking
-            schedulers.Remove(targetCoroutine);
-            persistentSchedulers.Remove(targetCoroutine);
-            coroutineKeys.Remove(targetCoroutine);
-            runningPersistentStatements.Remove(stmtKey);
-
-            Debug.Log($"[SP] Stopped persistent statement (muted/unsoloed): {stmtKey}");
-        }
-    }
-
-    IEnumerator RunStmt(Statement s, string stmtKey, bool anySoloActive)
-    {
-        // Initialize source list for this statement
-        if (!statementSources.ContainsKey(stmtKey))
-            statementSources[stmtKey] = new List<AudioSource>();
+        Statement s = track.Statement;
 
         yield return new WaitForSeconds(s.starts_at.Sample());
-        if (s.kind == "loop")  yield return HandleLoop(s, stmtKey, anySoloActive);
-        else yield return HandleOneShot(s, stmtKey, anySoloActive);
 
-        // Cleanup when statement finishes
-        statementSources.Remove(stmtKey);
+        if (s.kind == "loop")  yield return HandleLoop(track, anySoloActive);
+        else yield return HandleOneShot(track, anySoloActive);
+
+        // Cleanup when statement finishes (non-persistent tracks auto-remove)
+        if (!track.IsPersistent)
+        {
+            trackManager.StopTrack(track.Key);
+        }
     }
     
-    IEnumerator HandleLoop(Statement s, string stmtKey, bool anySoloActive)
+    IEnumerator HandleLoop(SatieTrack track, bool anySoloActive)
     {
+        Statement s = track.Statement;
         var src = SpawnSource(s, anySoloActive);
         if (!src) yield break;
 
-        // Track this source for the statement
-        if (statementSources.ContainsKey(stmtKey))
-            statementSources[stmtKey].Add(src);
+        // Track this source in the track
+        track.AddSource(src);
 
         if (s.duration.isSet)
         {
             float fadeOut = s.fade_out.Sample();
             yield return StopAfter(src, s.duration.Sample(), fadeOut);
         }
+        else
+        {
+            // Loop with no duration - play indefinitely, never return
+            while (true)
+            {
+                yield return null;
+            }
+        }
     }
-    
-    IEnumerator HandleOneShot(Statement s, string stmtKey, bool anySoloActive)
+
+    IEnumerator HandleOneShot(SatieTrack track, bool anySoloActive)
     {
+        Statement s = track.Statement;
         Debug.Log($"[HandleOneShot] clip={s.clip}, every.isSet={s.every.isSet}, every.min={s.every.min}, every.max={s.every.max}");
 
         // If no 'every' is set, play once and exit
@@ -250,8 +196,7 @@ public class SatieRuntime : MonoBehaviour
         {
             Debug.Log($"[HandleOneShot] Playing once and exiting");
             var src = SpawnSource(s, anySoloActive);
-            if (src && statementSources.ContainsKey(stmtKey))
-                statementSources[stmtKey].Add(src);
+            if (src) track.AddSource(src);
             yield break;
         }
 
@@ -265,8 +210,7 @@ public class SatieRuntime : MonoBehaviour
             {
                 var src = SpawnSource(s, anySoloActive);
                 if (!src) yield break;
-                if (statementSources.ContainsKey(stmtKey))
-                    statementSources[stmtKey].Add(src);
+                track.AddSource(src);
             }
             else
             {
@@ -274,8 +218,7 @@ public class SatieRuntime : MonoBehaviour
                 {
                     persistent = SpawnSource(s, anySoloActive);
                     if (!persistent) yield break;
-                    if (statementSources.ContainsKey(stmtKey))
-                        statementSources[stmtKey].Add(persistent);
+                    track.AddSource(persistent);
                 }
 
                 string clipName = SatieUtil.ResolveClip(s.clip);
@@ -316,11 +259,13 @@ public class SatieRuntime : MonoBehaviour
     AudioSource SpawnSource(Statement s, bool anySoloActive)
     {
         string clipName = SatieUtil.ResolveClip(s.clip);
-        var clip = Resources.Load<AudioClip>(SatieParser.PathFor(clipName));
+        string fullPath = SatieParser.PathFor(clipName);
+
+        var clip = Resources.Load<AudioClip>(fullPath);
         if (!clip)
         {
             Debug.LogWarning($"[Satie] Audio clip '{clipName}' not found. "
-                             + $"Looked for Resources/{SatieParser.PathFor(clipName)}.*");
+                             + $"Looked for Resources/{fullPath}.*");
             return null;
         }
 
@@ -328,11 +273,6 @@ public class SatieRuntime : MonoBehaviour
         go.transform.SetParent(transform);
 
         var src = go.AddComponent<AudioSource>();
-        spawned.Add(src);
-
-        // Track if this source is persistent
-        if (s.persistent)
-            persistentSources[src] = true;
 
         src.clip = clip;
         src.loop = (s.kind == "loop");
@@ -554,57 +494,209 @@ public class SatieRuntime : MonoBehaviour
 
     void HardReset()
     {
-        // Stop non-persistent coroutines
-        var coroutinesToRemove = new List<Coroutine>();
-        foreach (var co in schedulers)
+        // Safety check - trackManager might not be initialized yet
+        if (trackManager == null) return;
+
+        // Stop all non-persistent tracks
+        trackManager.StopAllTracks(includePersistent: false);
+
+        int persistentCount = trackManager.GetPersistentTrackCount();
+        Debug.Log($"[SP] HardReset complete. {persistentCount} persistent tracks remain.");
+    }
+
+    // ===== Public API for Track Control =====
+
+    /// <summary>
+    /// Get the track manager for direct access to all tracks
+    /// </summary>
+    public SatieTrackManager GetTrackManager()
+    {
+        return trackManager;
+    }
+
+    /// <summary>
+    /// Stop a specific track by its key
+    /// </summary>
+    public void StopTrack(string trackKey)
+    {
+        trackManager?.StopTrack(trackKey);
+    }
+
+    /// <summary>
+    /// Mute/unmute a specific track
+    /// </summary>
+    public void SetTrackMute(string trackKey, bool muted)
+    {
+        trackManager?.SetTrackMute(trackKey, muted);
+    }
+
+    /// <summary>
+    /// Set volume for a specific track
+    /// </summary>
+    public void SetTrackVolume(string trackKey, float volume)
+    {
+        trackManager?.SetTrackVolume(trackKey, volume);
+    }
+
+    /// <summary>
+    /// Set pitch for a specific track
+    /// </summary>
+    public void SetTrackPitch(string trackKey, float pitch)
+    {
+        trackManager?.SetTrackPitch(trackKey, pitch);
+    }
+
+    /// <summary>
+    /// Get a track by its key for more advanced control
+    /// </summary>
+    public SatieTrack GetTrack(string trackKey)
+    {
+        return trackManager?.GetTrack(trackKey);
+    }
+
+    /// <summary>
+    /// Get all currently active tracks
+    /// </summary>
+    public IEnumerable<SatieTrack> GetAllTracks()
+    {
+        return trackManager?.GetAllTracks() ?? Enumerable.Empty<SatieTrack>();
+    }
+
+    /// <summary>
+    /// Get all persistent tracks
+    /// </summary>
+    public IEnumerable<SatieTrack> GetPersistentTracks()
+    {
+        return trackManager?.GetPersistentTracks() ?? Enumerable.Empty<SatieTrack>();
+    }
+
+    /// <summary>
+    /// Stop all tracks (optionally include persistent ones)
+    /// </summary>
+    public void StopAllTracks(bool includePersistent = true)
+    {
+        trackManager?.StopAllTracks(includePersistent);
+    }
+
+    /// <summary>
+    /// Mute/unmute all tracks
+    /// </summary>
+    public void MuteAllTracks(bool muted)
+    {
+        trackManager?.MuteAllTracks(muted);
+    }
+
+    /// <summary>
+    /// Get count of active tracks
+    /// </summary>
+    public int GetTrackCount()
+    {
+        return trackManager?.GetTrackCount() ?? 0;
+    }
+
+    /// <summary>
+    /// Print debug info for all tracks
+    /// </summary>
+    public void PrintTrackDebugInfo()
+    {
+        trackManager?.PrintDebugInfo();
+    }
+
+    // ===== Mixer Group API =====
+
+    /// <summary>
+    /// Get all mixer groups
+    /// </summary>
+    public List<SatieMixerGroup> GetMixerGroups()
+    {
+        return mixerGroups;
+    }
+
+    /// <summary>
+    /// Add a new mixer group
+    /// </summary>
+    public SatieMixerGroup AddMixerGroup(string name)
+    {
+        var group = new SatieMixerGroup(name);
+        mixerGroups.Add(group);
+        return group;
+    }
+
+    /// <summary>
+    /// Remove a mixer group
+    /// </summary>
+    public void RemoveMixerGroup(SatieMixerGroup group)
+    {
+        mixerGroups.Remove(group);
+    }
+
+    /// <summary>
+    /// Apply mixer group settings to all tracks
+    /// </summary>
+    public void ApplyMixerGroups()
+    {
+        if (trackManager == null) return;
+
+        // Check if any group is soloed
+        bool anyGroupSoloed = mixerGroups.Any(g => g.solo);
+
+        // Apply each group's settings to its tracks
+        foreach (var group in mixerGroups)
         {
-            if (co != null)
+            group.ApplyToTracks(trackManager, anyGroupSoloed);
+        }
+
+        // Apply master volume and mute to all tracks
+        foreach (var track in trackManager.GetAllTracks())
+        {
+            if (track.Sources.Count > 0)
             {
-                // Check if this coroutine is persistent
-                if (!persistentSchedulers.ContainsKey(co) || !persistentSchedulers[co])
+                foreach (var src in track.Sources)
                 {
-                    StopCoroutine(co);
-                    coroutinesToRemove.Add(co);
+                    if (src)
+                    {
+                        // Apply master volume on top of existing volume
+                        src.volume *= masterVolume;
+                        // Apply master mute
+                        if (masterMute)
+                            src.mute = true;
+                    }
                 }
             }
         }
+    }
 
-        // Remove stopped coroutines from the list and clean up their keys
-        foreach (var co in coroutinesToRemove)
-        {
-            schedulers.Remove(co);
-            persistentSchedulers.Remove(co);
+    /// <summary>
+    /// Get master volume
+    /// </summary>
+    public float GetMasterVolume()
+    {
+        return masterVolume;
+    }
 
-            // Remove the key from runningPersistentStatements if this was persistent
-            if (coroutineKeys.TryGetValue(co, out string key))
-            {
-                runningPersistentStatements.Remove(key);
-                coroutineKeys.Remove(co);
-            }
-        }
+    /// <summary>
+    /// Set master volume
+    /// </summary>
+    public void SetMasterVolume(float volume)
+    {
+        masterVolume = Mathf.Clamp01(volume);
+        ApplyMixerGroups();
+    }
 
-        // Destroy non-persistent audio sources
-        var sourcesToRemove = new List<AudioSource>();
-        foreach (var src in spawned)
-        {
-            if (src)
-            {
-                // Check if this source is persistent
-                if (!persistentSources.ContainsKey(src) || !persistentSources[src])
-                {
-                    Destroy(src.gameObject);
-                    sourcesToRemove.Add(src);
-                }
-            }
-        }
+    /// <summary>
+    /// Get master mute state
+    /// </summary>
+    public bool GetMasterMute()
+    {
+        return masterMute;
+    }
 
-        // Remove destroyed sources from the list
-        foreach (var src in sourcesToRemove)
-        {
-            spawned.Remove(src);
-            persistentSources.Remove(src);
-        }
-
-        Debug.Log($"[SP] HardReset complete. Persistent: {schedulers.Count} coroutines, {spawned.Count} sources.");
+    /// <summary>
+    /// Set master mute state
+    /// </summary>
+    public void SetMasterMute(bool muted)
+    {
+        masterMute = muted;
+        ApplyMixerGroups();
     }
 }

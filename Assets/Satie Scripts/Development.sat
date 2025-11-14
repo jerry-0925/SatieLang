@@ -1,0 +1,10 @@
+5 * loop "music/drone":
+    pitch = 1
+    volume = 0.5
+    move = walk, -10to10, -10to10, 0.1to2
+    visual = trail and sphere
+
+oneshot "music/drone" every 5to10:
+    pitch = 0.5to2
+    volume = 0.3to0.7
+    visual = cube
