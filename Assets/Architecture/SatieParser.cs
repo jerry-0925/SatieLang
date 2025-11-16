@@ -71,8 +71,9 @@ namespace Satie
     // parser
     public static class SatieParser
     {
+        // Syntax: loop clip or oneshot clip every 1to5
         static readonly Regex StmtRx = new(
-            @"^(?:(?<count>\d+)\s*\*\s*)?(?<kind>loop|oneshot)\s+""(?<clip>.+?)""\s*(?:every\s+(?:(?<e1>-?\d+\.?\d*)to(?<e2>-?\d+\.?\d*)|(?<e>-?\d+\.?\d*)))?\s*:\s*(?://.*)?\r?\n" +
+            @"^(?:(?<count>\d+)\s*\*\s*)?(?<kind>loop|oneshot)\s+(?<clip>[^\s#]+)\s*(?:every\s+(?:(?<e1>-?\d+\.?\d*)to(?<e2>-?\d+\.?\d*)|(?<e>-?\d+\.?\d*)))?\s*(?:#.*)?\r?\n" +
             @"(?<block>(?:[ \t]+.*\r?\n?)*)",
             RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -81,8 +82,9 @@ namespace Satie
             @"^(?:\d+\s*\*\s*)?(?:loop|oneshot)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+        // Syntax: key value (space-separated)
         static readonly Regex PropRx = new(
-            @"^[ \t]*(?<key>\w+)\s*=\s*(?<val>[^\r\n#]+)",
+            @"^[ \t]*(?<key>\w+)\s+(?<val>[^\r\n#]+)",
             RegexOptions.Multiline | RegexOptions.Compiled);
 
         sealed class GroupCtx
@@ -658,9 +660,16 @@ namespace Satie
                 // All three axes = fly
                 moveType = Statement.WanderType.Fly;
             }
-            else if ((hasX && hasY) || (hasY && hasZ) || (hasX && hasZ))
+            else if (hasX && hasZ && !hasY)
             {
-                // Two axes = fly
+                // X and Z only = walk (Y locked to 0)
+                moveType = Statement.WanderType.Walk;
+                yMin = 0f;
+                yMax = 0f;
+            }
+            else if ((hasX && hasY) || (hasY && hasZ))
+            {
+                // Two axes including Y = fly
                 moveType = Statement.WanderType.Fly;
                 // Fill in defaults for unspecified axis
                 if (!hasX) { xMin = -5f; xMax = 5f; }

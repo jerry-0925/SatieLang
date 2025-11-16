@@ -1,18 +1,13 @@
+comment
 loop "ambience/water":
     volume = 0.2
     move = x -5to5 y 0to5 speed gobetween(0.0001and1 in 10)
     visual = trail
-    comment
     move = fly 
     move = x gobetween(-1and-0.5)to1 and y 0to5 at speed 2 
     move = x -1to1 and y -1to1 and z 0to2 at speed 1 
     move = x -5to5 
     move = y 0to5 
-    endcomment
-
-
-
-comment
     move = walk 
     move = fly 
     move = x -5to5 and y 0to5 at speed 2 
@@ -24,3 +19,14 @@ comment
     move = x gobetween(-1and-0.5 in 10)to1 and y 0to5 at speed 2
     move = x -1to1 y -1to1 z 0to2 at speed goto(0.1and10 as inquad in 10)
 endcomment
+
+
+# the correct syntax should be:
+group music
+volume 1
+    5 * oneshot piano/1to5 every 4to10
+        volume 0.2 
+        pitch gobetween(0.1to0.5and2 as inquad in 2) 
+        move x -10to10 z -10to10 speed 1
+        visual trail and cube
+
