@@ -284,7 +284,7 @@ public class SatieRuntime : MonoBehaviour
             s.wanderType == Statement.WanderType.Fly)
         {
             var mover = go.AddComponent<SSpatial>();
-            mover.Initialize(dspClock, random);
+            mover.Initialize(dspClock, random, s);
             mover.type = s.wanderType;
             mover.minPos = s.areaMin;
             mover.maxPos = s.areaMax;

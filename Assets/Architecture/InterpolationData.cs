@@ -39,7 +39,9 @@ namespace Satie
         {
             if (string.IsNullOrWhiteSpace(interpolateStr)) return null;
 
-            var gotoPattern = @"goto\s*\(\s*(?<min>[\d.]+(?:to[\d.]+)?)\s*and\s*(?<max>[\d.]+(?:to[\d.]+)?)\s+as\s+(?<ease>\w+)\s+in\s+(?<dur>[\d.]+(?:to[\d.]+)?)\s*\)";
+            // Try goto with optional easing (defaults to linear)
+            // Pattern: goto(0and1 in 2) or goto(0and1 as inquad in 2)
+            var gotoPattern = @"goto\s*\(\s*(?<min>-?[\d.]+(?:to-?[\d.]+)?)\s*and\s*(?<max>-?[\d.]+(?:to-?[\d.]+)?)\s*(?:as\s+(?<ease>\w+))?\s+in\s+(?<dur>-?[\d.]+(?:to-?[\d.]+)?)\s*\)";
             var gotoRegex = new System.Text.RegularExpressions.Regex(gotoPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             var gotoMatch = gotoRegex.Match(interpolateStr);
 
@@ -47,12 +49,14 @@ namespace Satie
             {
                 RangeOrValue min = RangeOrValue.Parse(gotoMatch.Groups["min"].Value);
                 RangeOrValue max = RangeOrValue.Parse(gotoMatch.Groups["max"].Value);
-                string easeName = gotoMatch.Groups["ease"].Value;
+                string easeName = gotoMatch.Groups["ease"].Success ? gotoMatch.Groups["ease"].Value : "linear";
                 RangeOrValue duration = RangeOrValue.Parse(gotoMatch.Groups["dur"].Value);
                 return new InterpolationData(min, max, easeName, duration, 1, false, InterpolationType.Goto);
             }
 
-            var goBetweenPattern = @"gobetween\s*\(\s*(?<min>[\d.]+(?:to[\d.]+)?)\s*and\s*(?<max>[\d.]+(?:to[\d.]+)?)\s+as\s+(?<ease>\w+)\s+in\s+(?<dur>[\d.]+(?:to[\d.]+)?)\s*(?:\s+for\s+(?<count>ever|\d+))?\s*\)";
+            // Try gobetween with optional easing (defaults to linear)
+            // Pattern: gobetween(0and1 in 2) or gobetween(0and1 as inquad in 2)
+            var goBetweenPattern = @"gobetween\s*\(\s*(?<min>-?[\d.]+(?:to-?[\d.]+)?)\s*and\s*(?<max>-?[\d.]+(?:to-?[\d.]+)?)\s*(?:as\s+(?<ease>\w+))?\s+in\s+(?<dur>-?[\d.]+(?:to-?[\d.]+)?)\s*(?:\s+for\s+(?<count>ever|\d+))?\s*\)";
             var goBetweenRegex = new System.Text.RegularExpressions.Regex(goBetweenPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             var goBetweenMatch = goBetweenRegex.Match(interpolateStr);
 
@@ -60,7 +64,7 @@ namespace Satie
             {
                 RangeOrValue min = RangeOrValue.Parse(goBetweenMatch.Groups["min"].Value);
                 RangeOrValue max = RangeOrValue.Parse(goBetweenMatch.Groups["max"].Value);
-                string easeName = goBetweenMatch.Groups["ease"].Value;
+                string easeName = goBetweenMatch.Groups["ease"].Success ? goBetweenMatch.Groups["ease"].Value : "linear";
                 RangeOrValue duration = RangeOrValue.Parse(goBetweenMatch.Groups["dur"].Value);
 
                 bool forever = true;
@@ -83,7 +87,7 @@ namespace Satie
                 return new InterpolationData(min, max, easeName, duration, count, forever, InterpolationType.GoBetween);
             }
 
-            var pattern = @"interpolate\s*\(\s*(?<min>[\d.]+(?:to[\d.]+)?)\s*and\s*(?<max>[\d.]+(?:to[\d.]+)?)\s+as\s+(?<ease>\w+)\s+in\s+(?<dur>[\d.]+(?:to[\d.]+)?)\s*(?:\s+for\s+(?<count>ever|\d+))?\s*\)";
+            var pattern = @"interpolate\s*\(\s*(?<min>-?[\d.]+(?:to-?[\d.]+)?)\s*and\s*(?<max>-?[\d.]+(?:to-?[\d.]+)?)\s+as\s+(?<ease>\w+)\s+in\s+(?<dur>-?[\d.]+(?:to-?[\d.]+)?)\s*(?:\s+for\s+(?<count>ever|\d+))?\s*\)";
             var regex = new System.Text.RegularExpressions.Regex(pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             var match = regex.Match(interpolateStr);
 

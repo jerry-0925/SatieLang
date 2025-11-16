@@ -31,6 +31,13 @@ namespace Satie
 
         public InterpolationData volumeInterpolation;
         public InterpolationData pitchInterpolation;
+        public InterpolationData moveXMinInterpolation;
+        public InterpolationData moveXMaxInterpolation;
+        public InterpolationData moveYMinInterpolation;
+        public InterpolationData moveYMaxInterpolation;
+        public InterpolationData moveZMinInterpolation;
+        public InterpolationData moveZMaxInterpolation;
+        public InterpolationData moveSpeedInterpolation;
     }
 
     public readonly struct RangeOrValue
@@ -353,39 +360,341 @@ namespace Satie
             return result.ToString();
         }
 
-        static void ParseMove(Statement s,string v)
+        static void ParseMove(Statement s, string v)
         {
-            string[] t = v.Split(',');
-            if (t.Length < 4) { Debug.LogError("move: not enough parameters"); return; }
+            v = v.Trim();
 
-            static (float,float) R(string str)
+            // Helper to parse range strings like "-5to5" or "10"
+            static (float, float) ParseRange(string str)
             {
-                if (str.Contains("to")) { var p=str.Split(new[] { "to" }, System.StringSplitOptions.None); return (float.Parse(p[0]),float.Parse(p[1])); }
-                float f=float.Parse(str); return (f,f);
+                str = str.Trim();
+                if (str.Contains("to"))
+                {
+                    var parts = str.Split(new[] { "to" }, System.StringSplitOptions.None);
+                    return (float.Parse(parts[0]), float.Parse(parts[1]));
+                }
+                float val = float.Parse(str);
+                return (val, val);
             }
 
-            string mode=t[0].Trim().ToLower();
-            if (mode=="walk" && t.Length==4)
+            // Default values
+            float xMin = -5f, xMax = 5f;
+            float yMin = -5f, yMax = 5f;
+            float zMin = -5f, zMax = 5f;
+            float speed = 1f;
+            Statement.WanderType moveType = Statement.WanderType.None;
+
+            // Check for old comma-separated syntax first (backwards compatibility)
+            if (v.Contains(","))
             {
-                var (xmin,xmax)=R(t[1]); var (zmin,zmax)=R(t[2]);
-                s.wanderType=Statement.WanderType.Walk;
-                s.areaMin=new Vector3(xmin,0f,zmin); s.areaMax=new Vector3(xmax,0f,zmax);
-                s.wanderHz=RangeOrValue.Parse(t[3]);
+                string[] parts = v.Split(',');
+                string mode = parts[0].Trim().ToLower();
+
+                if (mode == "walk" && parts.Length >= 4)
+                {
+                    var (xmin, xmax) = ParseRange(parts[1]);
+                    var (zmin, zmax) = ParseRange(parts[2]);
+                    moveType = Statement.WanderType.Walk;
+                    s.areaMin = new Vector3(xmin, 0f, zmin);
+                    s.areaMax = new Vector3(xmax, 0f, zmax);
+                    s.wanderHz = RangeOrValue.Parse(parts[3]);
+                    s.wanderType = moveType;
+                    return;
+                }
+                else if (mode == "fly" && parts.Length >= 5)
+                {
+                    var (xmin, xmax) = ParseRange(parts[1]);
+                    var (ymin, ymax) = ParseRange(parts[2]);
+                    var (zmin, zmax) = ParseRange(parts[3]);
+                    moveType = Statement.WanderType.Fly;
+                    s.areaMin = new Vector3(xmin, ymin, zmin);
+                    s.areaMax = new Vector3(xmax, ymax, zmax);
+                    s.wanderHz = RangeOrValue.Parse(parts[4]);
+                    s.wanderType = moveType;
+                    return;
+                }
+                else if (mode == "pos" && parts.Length >= 4)
+                {
+                    var (xmin, xmax) = ParseRange(parts[1]);
+                    var (ymin, ymax) = ParseRange(parts[2]);
+                    var (zmin, zmax) = ParseRange(parts[3]);
+                    s.wanderType = Statement.WanderType.Fixed;
+                    s.areaMin = new Vector3(xmin, ymin, zmin);
+                    s.areaMax = new Vector3(xmax, ymax, zmax);
+                    return;
+                }
             }
-            else if (mode=="fly" && t.Length==5)
+
+            // New flexible syntax
+            string input = v.ToLower();
+
+            // Check for just "walk" or "fly"
+            if (input == "walk")
             {
-                var (xmin,xmax)=R(t[1]); var (ymin,ymax)=R(t[2]); var (zmin,zmax)=R(t[3]);
-                s.wanderType=Statement.WanderType.Fly;
-                s.areaMin=new Vector3(xmin,ymin,zmin); s.areaMax=new Vector3(xmax,ymax,zmax);
-                s.wanderHz=RangeOrValue.Parse(t[4]);
+                s.wanderType = Statement.WanderType.Walk;
+                s.areaMin = new Vector3(-5f, 0f, -5f);
+                s.areaMax = new Vector3(5f, 0f, 5f);
+                s.wanderHz = new RangeOrValue(1f);
+                return;
             }
-            else if (mode=="pos" && t.Length==4)
+            else if (input == "fly")
             {
-                var (xmin,xmax)=R(t[1]); var (ymin,ymax)=R(t[2]); var (zmin,zmax)=R(t[3]);
-                s.wanderType=Statement.WanderType.Fixed;
-                s.areaMin=new Vector3(xmin,ymin,zmin); s.areaMax=new Vector3(xmax,ymax,zmax);
+                s.wanderType = Statement.WanderType.Fly;
+                s.areaMin = new Vector3(-5f, -5f, -5f);
+                s.areaMax = new Vector3(5f, 5f, 5f);
+                s.wanderHz = new RangeOrValue(1f);
+                return;
             }
-            else Debug.LogError($"move: bad syntax '{v}'");
+
+            // Parse axis specifications and speed
+            bool hasX = false, hasY = false, hasZ = false;
+
+            // Extract speed (can be simple value, range, or interpolation)
+            // Pattern: "(?:at\s+)?speed\s+(.+?)(?:\s+(?:x|y|z)\s+|$)"
+            var speedMatch = Regex.Match(v, @"(?:at\s+)?speed\s+(.+?)(?=\s+(?:x|y|z)\s+|$)", RegexOptions.IgnoreCase);
+            if (speedMatch.Success)
+            {
+                string speedValue = speedMatch.Groups[1].Value.Trim();
+
+                // Check if it's an interpolation
+                var speedInterp = InterpolationData.Parse(speedValue);
+                if (speedInterp != null)
+                {
+                    s.moveSpeedInterpolation = speedInterp;
+                    speed = speedInterp.minValue; // Use min as starting value
+                }
+                else
+                {
+                    // Simple value or range
+                    speed = float.Parse(speedValue.Replace("to", "."));
+                }
+
+                v = v.Substring(0, speedMatch.Index).Trim(); // Remove speed part
+            }
+
+            // Remove "and" but only when it's not inside parentheses (to preserve goto/gobetween syntax)
+            // Simple approach: only replace " and " when followed by an axis keyword
+            v = Regex.Replace(v, @"\s+and\s+(?=(?:x|y|z)\s+)", " ", RegexOptions.IgnoreCase);
+
+            // Extract x range or interpolation
+            // Pattern matches: "x -5to5" or "x gobetween(-1and-0.5 as linear in 2)to1"
+            var xMatch = Regex.Match(v, @"x\s+(.+?)(?=\s+(?:y|z|speed)\s+|$)", RegexOptions.IgnoreCase);
+            if (xMatch.Success)
+            {
+                string xValue = xMatch.Groups[1].Value.Trim();
+
+                // Check if it contains "to" outside of parentheses (e.g., "gobetween(...)to5")
+                // This means one side is interpolated and the other is a fixed value
+                var rangeMatch = Regex.Match(xValue, @"^(.+?)\s*to\s*(.+?)$");
+                if (rangeMatch.Success && !xValue.StartsWith("goto") && !xValue.StartsWith("gobetween"))
+                {
+                    // Split by "to" - could be "interp()toValue" or "valueToInterp()" or "valueToValue"
+                    string leftPart = rangeMatch.Groups[1].Value.Trim();
+                    string rightPart = rangeMatch.Groups[2].Value.Trim();
+
+                    var leftInterp = InterpolationData.Parse(leftPart);
+                    var rightInterp = InterpolationData.Parse(rightPart);
+
+                    if (leftInterp != null)
+                    {
+                        s.moveXMinInterpolation = leftInterp;
+                        xMin = leftInterp.minValue;
+                    }
+                    else
+                    {
+                        xMin = float.Parse(leftPart);
+                    }
+
+                    if (rightInterp != null)
+                    {
+                        s.moveXMaxInterpolation = rightInterp;
+                        xMax = rightInterp.minValue;
+                    }
+                    else
+                    {
+                        xMax = float.Parse(rightPart);
+                    }
+                }
+                else
+                {
+                    // Either a simple interpolation, or a simple range
+                    var xInterp = InterpolationData.Parse(xValue);
+
+                    if (xInterp != null)
+                    {
+                        // Single interpolation - apply to both min and max
+                        s.moveXMinInterpolation = xInterp;
+                        s.moveXMaxInterpolation = xInterp;
+                        xMin = xInterp.minValue;
+                        xMax = xInterp.maxValue;
+                    }
+                    else
+                    {
+                        try
+                        {
+                            (xMin, xMax) = ParseRange(xValue);
+                        }
+                        catch (System.Exception e)
+                        {
+                            Debug.LogError($"[Satie] Failed to parse X value: '{xValue}' - {e.Message}");
+                            throw;
+                        }
+                    }
+                }
+                hasX = true;
+            }
+
+            // Extract y range or interpolation
+            var yMatch = Regex.Match(v, @"y\s+(.+?)(?=\s+(?:x|z|speed)\s+|$)", RegexOptions.IgnoreCase);
+            if (yMatch.Success)
+            {
+                string yValue = yMatch.Groups[1].Value.Trim();
+
+                var rangeMatch = Regex.Match(yValue, @"^(.+?)\s*to\s*(.+?)$");
+                if (rangeMatch.Success && !yValue.StartsWith("goto") && !yValue.StartsWith("gobetween"))
+                {
+                    string leftPart = rangeMatch.Groups[1].Value.Trim();
+                    string rightPart = rangeMatch.Groups[2].Value.Trim();
+
+                    var leftInterp = InterpolationData.Parse(leftPart);
+                    var rightInterp = InterpolationData.Parse(rightPart);
+
+                    if (leftInterp != null)
+                    {
+                        s.moveYMinInterpolation = leftInterp;
+                        yMin = leftInterp.minValue;
+                    }
+                    else
+                    {
+                        yMin = float.Parse(leftPart);
+                    }
+
+                    if (rightInterp != null)
+                    {
+                        s.moveYMaxInterpolation = rightInterp;
+                        yMax = rightInterp.minValue;
+                    }
+                    else
+                    {
+                        yMax = float.Parse(rightPart);
+                    }
+                }
+                else
+                {
+                    var yInterp = InterpolationData.Parse(yValue);
+
+                    if (yInterp != null)
+                    {
+                        s.moveYMinInterpolation = yInterp;
+                        s.moveYMaxInterpolation = yInterp;
+                        yMin = yInterp.minValue;
+                        yMax = yInterp.maxValue;
+                    }
+                    else
+                    {
+                        (yMin, yMax) = ParseRange(yValue);
+                    }
+                }
+                hasY = true;
+            }
+
+            // Extract z range or interpolation
+            var zMatch = Regex.Match(v, @"z\s+(.+?)(?=\s+(?:x|y|speed)\s+|$)", RegexOptions.IgnoreCase);
+            if (zMatch.Success)
+            {
+                string zValue = zMatch.Groups[1].Value.Trim();
+
+                var rangeMatch = Regex.Match(zValue, @"^(.+?)\s*to\s*(.+?)$");
+                if (rangeMatch.Success && !zValue.StartsWith("goto") && !zValue.StartsWith("gobetween"))
+                {
+                    string leftPart = rangeMatch.Groups[1].Value.Trim();
+                    string rightPart = rangeMatch.Groups[2].Value.Trim();
+
+                    var leftInterp = InterpolationData.Parse(leftPart);
+                    var rightInterp = InterpolationData.Parse(rightPart);
+
+                    if (leftInterp != null)
+                    {
+                        s.moveZMinInterpolation = leftInterp;
+                        zMin = leftInterp.minValue;
+                    }
+                    else
+                    {
+                        zMin = float.Parse(leftPart);
+                    }
+
+                    if (rightInterp != null)
+                    {
+                        s.moveZMaxInterpolation = rightInterp;
+                        zMax = rightInterp.minValue;
+                    }
+                    else
+                    {
+                        zMax = float.Parse(rightPart);
+                    }
+                }
+                else
+                {
+                    var zInterp = InterpolationData.Parse(zValue);
+
+                    if (zInterp != null)
+                    {
+                        s.moveZMinInterpolation = zInterp;
+                        s.moveZMaxInterpolation = zInterp;
+                        zMin = zInterp.minValue;
+                        zMax = zInterp.maxValue;
+                    }
+                    else
+                    {
+                        (zMin, zMax) = ParseRange(zValue);
+                    }
+                }
+                hasZ = true;
+            }
+
+            // Determine movement type based on which axes are specified
+            if (hasX && hasY && hasZ)
+            {
+                // All three axes = fly
+                moveType = Statement.WanderType.Fly;
+            }
+            else if ((hasX && hasY) || (hasY && hasZ) || (hasX && hasZ))
+            {
+                // Two axes = fly
+                moveType = Statement.WanderType.Fly;
+                // Fill in defaults for unspecified axis
+                if (!hasX) { xMin = -5f; xMax = 5f; }
+                if (!hasY) { yMin = -5f; yMax = 5f; }
+                if (!hasZ) { zMin = -5f; zMax = 5f; }
+            }
+            else if (hasX || hasZ)
+            {
+                // Only X or only Z = walk (Y locked to 0, other horizontal axis locked to 0)
+                moveType = Statement.WanderType.Walk;
+                yMin = 0f;
+                yMax = 0f;
+                if (!hasX) { xMin = 0f; xMax = 0f; }
+                if (!hasZ) { zMin = 0f; zMax = 0f; }
+            }
+            else if (hasY)
+            {
+                // Only Y = fly with X and Z at 0
+                moveType = Statement.WanderType.Fly;
+                xMin = xMax = 0f;
+                zMin = zMax = 0f;
+            }
+
+            if (moveType != Statement.WanderType.None)
+            {
+                s.wanderType = moveType;
+                s.areaMin = new Vector3(xMin, yMin, zMin);
+                s.areaMax = new Vector3(xMax, yMax, zMax);
+                s.wanderHz = new RangeOrValue(speed);
+            }
+            else
+            {
+                Debug.LogError($"[Satie] Invalid move syntax: '{v}'");
+            }
         }
 
         static void ParseVisual(Statement s, string v)
