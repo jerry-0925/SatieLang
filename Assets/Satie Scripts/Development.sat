@@ -21,12 +21,13 @@ loop "ambience/water":
 endcomment
 
 
-# the correct syntax should be:
+# color
 group music
 volume 1
     5 * oneshot piano/1to5 every 4to10
         volume 0.2 
-        pitch gobetween(0.1to0.5and2 as inquad in 2) 
+        pitch 0.5to1.2
         move x -10to10 z -10to10 speed 1
         visual trail and cube
+        color red 255 green gobetween(40and255 in 10) blue gobetween(0and100 in 10)
 

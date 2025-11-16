@@ -301,6 +301,13 @@ public class SatieRuntime : MonoBehaviour
 
         AddVisuals(go, s);
 
+        // Add color component if color is specified
+        if (s.staticColor.HasValue || s.colorRInterpolation != null || s.colorGInterpolation != null || s.colorBInterpolation != null)
+        {
+            var colorComp = go.AddComponent<SColor>();
+            colorComp.Initialize(dspClock, random, s);
+        }
+
         // Add Steam Audio components if available and source is spatialized
         if (spatialAudio != null && s.wanderType != Statement.WanderType.None)
         {
@@ -402,7 +409,8 @@ public class SatieRuntime : MonoBehaviour
         tr.material = new UnityEngine.Material(Shader.Find("Sprites/Default"));
         tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-        Color start = new Color(random.Range(0f, 1f), random.Range(0f, 1f), random.Range(0f, 1f), 1f);
+        // Default to white, will be overridden by SColor if specified
+        Color start = Color.white;
         Color end   = new Color(start.r, start.g, start.b, 0f);
 
         var grad = new Gradient();
@@ -427,7 +435,8 @@ public class SatieRuntime : MonoBehaviour
         if (rend)
         {
             rend.material = new UnityEngine.Material(Shader.Find("Standard"));
-            rend.material.color = new Color(random.Range(0f, 1f), random.Range(0f, 1f), random.Range(0f, 1f), 0.8f);
+            // Default to white, will be overridden by SColor if specified
+            rend.material.color = Color.white;
         }
     }
 

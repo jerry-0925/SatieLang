@@ -38,6 +38,12 @@ namespace Satie
         public InterpolationData moveZMinInterpolation;
         public InterpolationData moveZMaxInterpolation;
         public InterpolationData moveSpeedInterpolation;
+
+        // Color properties
+        public Color? staticColor; // For static colors (white, #F54927, 255,100,50)
+        public InterpolationData colorRInterpolation;
+        public InterpolationData colorGInterpolation;
+        public InterpolationData colorBInterpolation;
     }
 
     public readonly struct RangeOrValue
@@ -253,6 +259,7 @@ namespace Satie
                     case "solo": s.solo = v.ToLower().StartsWith("t"); break;
                     case "visual": ParseVisual(s, v); break;
                     case "move": ParseMove(s,v); break;
+                    case "color": ParseColor(s, v); break;
                 }
             }
             return s;
@@ -262,11 +269,18 @@ namespace Satie
         {
             bool hasVol = g.props.TryGetValue("volume", out string vRaw);
             bool hasPitch = g.props.TryGetValue("pitch",  out string pRaw);
+            bool hasColor = g.props.TryGetValue("color", out string cRaw);
 
             InterpolationData groupVolInterp = null;
             InterpolationData groupPitchInterp = null;
             RangeOrValue gVolRange = new RangeOrValue(1f);
             RangeOrValue gPitchRange = new RangeOrValue(1f);
+
+            // Group color data
+            Color? groupStaticColor = null;
+            InterpolationData groupColorRInterp = null;
+            InterpolationData groupColorGInterp = null;
+            InterpolationData groupColorBInterp = null;
 
             if (hasVol)
             {
@@ -284,6 +298,17 @@ namespace Satie
                     gPitchRange = RangeOrValue.Parse(pRaw);
             }
 
+            if (hasColor)
+            {
+                // Create a temp statement to parse color into, then extract the data
+                var tempStmt = new Statement();
+                ParseColor(tempStmt, cRaw);
+                groupStaticColor = tempStmt.staticColor;
+                groupColorRInterp = tempStmt.colorRInterpolation;
+                groupColorGInterp = tempStmt.colorGInterpolation;
+                groupColorBInterp = tempStmt.colorBInterpolation;
+            }
+
             foreach (var s in g.children)
             {
                 // Handle interpolations from group
@@ -291,6 +316,19 @@ namespace Satie
                     s.volumeInterpolation = groupVolInterp;
                 if (groupPitchInterp != null && s.pitchInterpolation == null)
                     s.pitchInterpolation = groupPitchInterp;
+
+                // Apply group color if statement doesn't have one
+                if (hasColor)
+                {
+                    if (groupStaticColor.HasValue && !s.staticColor.HasValue)
+                        s.staticColor = groupStaticColor;
+                    if (groupColorRInterp != null && s.colorRInterpolation == null)
+                        s.colorRInterpolation = groupColorRInterp;
+                    if (groupColorGInterp != null && s.colorGInterpolation == null)
+                        s.colorGInterpolation = groupColorGInterp;
+                    if (groupColorBInterp != null && s.colorBInterpolation == null)
+                        s.colorBInterpolation = groupColorBInterp;
+                }
 
                 // Volume and pitch multiply with group values
                 // Sample per statement so each gets its own random value if group has a range
@@ -307,7 +345,8 @@ namespace Satie
                     switch (kv.Key)
                     {
                         case "volume":
-                        case "pitch": break;   // done above
+                        case "pitch":
+                        case "color": break;   // done above
                         case "starts_at" when !s.starts_at.isSet: s.starts_at = RangeOrValue.Parse(kv.Value); break;
                         case "duration" when !s.duration.isSet: s.duration = RangeOrValue.Parse(kv.Value); break;
                         case "fade_in" when !s.fade_in.isSet: s.fade_in = RangeOrValue.Parse(kv.Value); break;
@@ -713,11 +752,11 @@ namespace Satie
 
             // Split by "and" to support multiple visuals
             string[] parts = v.Split(new[] { " and " }, System.StringSplitOptions.RemoveEmptyEntries);
-            
+
             foreach (string part in parts)
             {
                 string trimmed = part.Trim();
-                
+
                 // Check for object "path" syntax
                 if (trimmed.StartsWith("object ", System.StringComparison.OrdinalIgnoreCase))
                 {
@@ -737,6 +776,278 @@ namespace Satie
                     // It's a primitive type (trail, sphere, cube, etc.)
                     s.visual.Add(trimmed.ToLower());
                 }
+            }
+        }
+
+        static void ParseColor(Statement s, string v)
+        {
+            v = v.Trim();
+            if (string.IsNullOrWhiteSpace(v)) return;
+
+            // Check for named channel syntax
+            // Pattern: red 255 green gobetween(40to255 in 10) blue gobetween(0to100 in 10)
+            // or: red 255 and green gobetween(40to255 in 10) and blue gobetween(0to100 in 10)
+            if (v.Contains("red ") || v.Contains("green ") || v.Contains("blue "))
+            {
+                // Remove optional "and" separators
+                string normalized = v.Replace(" and ", " ");
+
+                // Parse named channels
+                var redMatch = Regex.Match(normalized, @"red\s+(.+?)(?=\s+(?:green|blue)|$)", RegexOptions.IgnoreCase);
+                var greenMatch = Regex.Match(normalized, @"green\s+(.+?)(?=\s+(?:red|blue)|$)", RegexOptions.IgnoreCase);
+                var blueMatch = Regex.Match(normalized, @"blue\s+(.+?)(?=\s+(?:red|green)|$)", RegexOptions.IgnoreCase);
+
+                if (redMatch.Success)
+                {
+                    string redValue = redMatch.Groups[1].Value.Trim();
+                    ParseColorChannel(s, "red", redValue);
+                }
+
+                if (greenMatch.Success)
+                {
+                    string greenValue = greenMatch.Groups[1].Value.Trim();
+                    ParseColorChannel(s, "green", greenValue);
+                }
+
+                if (blueMatch.Success)
+                {
+                    string blueValue = blueMatch.Groups[1].Value.Trim();
+                    ParseColorChannel(s, "blue", blueValue);
+                }
+
+                return;
+            }
+
+            // Check for gobetween interpolation between two hex colors
+            // Pattern: gobetween(#000000to#FFFFFF as inquad in 5)
+            var hexGoBetweenPattern = @"gobetween\s*\(\s*#([0-9A-Fa-f]{6})to#([0-9A-Fa-f]{6})\s*(?:as\s+(?<ease>\w+))?\s+in\s+(?<dur>-?[\d.]+(?:to-?[\d.]+)?)\s*\)";
+            var hexGoBetweenMatch = Regex.Match(v, hexGoBetweenPattern);
+
+            if (hexGoBetweenMatch.Success)
+            {
+                // Parse start and end colors
+                Color startColor = HexToColor(hexGoBetweenMatch.Groups[1].Value);
+                Color endColor = HexToColor(hexGoBetweenMatch.Groups[2].Value);
+
+                string easeName = hexGoBetweenMatch.Groups["ease"].Success ? hexGoBetweenMatch.Groups["ease"].Value : "linear";
+                RangeOrValue duration = RangeOrValue.Parse(hexGoBetweenMatch.Groups["dur"].Value);
+
+                // Create interpolation data for each color channel
+                s.colorRInterpolation = new InterpolationData(
+                    new RangeOrValue(startColor.r),
+                    new RangeOrValue(endColor.r),
+                    easeName,
+                    duration,
+                    1,
+                    true,
+                    InterpolationType.GoBetween);
+
+                s.colorGInterpolation = new InterpolationData(
+                    new RangeOrValue(startColor.g),
+                    new RangeOrValue(endColor.g),
+                    easeName,
+                    duration,
+                    1,
+                    true,
+                    InterpolationType.GoBetween);
+
+                s.colorBInterpolation = new InterpolationData(
+                    new RangeOrValue(startColor.b),
+                    new RangeOrValue(endColor.b),
+                    easeName,
+                    duration,
+                    1,
+                    true,
+                    InterpolationType.GoBetween);
+                return;
+            }
+
+            // Check for gobetween with single channel (0,255 in 5)
+            // Pattern: gobetween(0,255 in 5)
+            var singleChannelPattern = @"gobetween\s*\(\s*(?<min>-?[\d.]+)\s*,\s*(?<max>-?[\d.]+)\s+in\s+(?<dur>-?[\d.]+(?:to-?[\d.]+)?)\s*\)";
+            var singleChannelMatch = Regex.Match(v, singleChannelPattern);
+
+            if (singleChannelMatch.Success)
+            {
+                float min = float.Parse(singleChannelMatch.Groups["min"].Value) / 255f;
+                float max = float.Parse(singleChannelMatch.Groups["max"].Value) / 255f;
+                RangeOrValue duration = RangeOrValue.Parse(singleChannelMatch.Groups["dur"].Value);
+
+                // Apply to all channels (grayscale interpolation)
+                s.colorRInterpolation = new InterpolationData(
+                    new RangeOrValue(min),
+                    new RangeOrValue(max),
+                    "linear",
+                    duration,
+                    1,
+                    true,
+                    InterpolationType.GoBetween);
+
+                s.colorGInterpolation = new InterpolationData(
+                    new RangeOrValue(min),
+                    new RangeOrValue(max),
+                    "linear",
+                    duration,
+                    1,
+                    true,
+                    InterpolationType.GoBetween);
+
+                s.colorBInterpolation = new InterpolationData(
+                    new RangeOrValue(min),
+                    new RangeOrValue(max),
+                    "linear",
+                    duration,
+                    1,
+                    true,
+                    InterpolationType.GoBetween);
+                return;
+            }
+
+            // Check for hex color (#F54927)
+            if (v.StartsWith("#"))
+            {
+                if (v.Length == 7)
+                {
+                    s.staticColor = HexToColor(v.Substring(1));
+                }
+                else
+                {
+                    Debug.LogWarning($"[Satie] Invalid hex color format: '{v}'. Use #RRGGBB format.");
+                }
+                return;
+            }
+
+            // Check for RGB color (255,100,50)
+            var rgbPattern = @"^(\d+)\s*,\s*(\d+)\s*,\s*(\d+)$";
+            var rgbMatch = Regex.Match(v, rgbPattern);
+
+            if (rgbMatch.Success)
+            {
+                float r = float.Parse(rgbMatch.Groups[1].Value) / 255f;
+                float g = float.Parse(rgbMatch.Groups[2].Value) / 255f;
+                float b = float.Parse(rgbMatch.Groups[3].Value) / 255f;
+                s.staticColor = new Color(r, g, b, 1f);
+                return;
+            }
+
+            // Check for named colors
+            string colorName = v.ToLower();
+            switch (colorName)
+            {
+                case "white": s.staticColor = Color.white; break;
+                case "black": s.staticColor = Color.black; break;
+                case "red": s.staticColor = Color.red; break;
+                case "green": s.staticColor = Color.green; break;
+                case "blue": s.staticColor = Color.blue; break;
+                case "yellow": s.staticColor = Color.yellow; break;
+                case "cyan": s.staticColor = Color.cyan; break;
+                case "magenta": s.staticColor = Color.magenta; break;
+                case "gray":
+                case "grey": s.staticColor = Color.gray; break;
+                default:
+                    Debug.LogWarning($"[Satie] Unknown color: '{v}'");
+                    break;
+            }
+        }
+
+        static void ParseColorChannel(Statement s, string channelName, string value)
+        {
+            InterpolationData interp = null;
+
+            // Try to parse as interpolation first
+            if (value.Contains("gobetween") || value.Contains("goto") || value.Contains("interpolate"))
+            {
+                interp = InterpolationData.Parse(value);
+
+                if (interp != null)
+                {
+                    // Check if values need normalization (0-255 -> 0-1)
+                    float minCheck = interp.minRange.isRange ?
+                        Mathf.Max(interp.minRange.min, interp.minRange.max) :
+                        interp.minRange.min;
+                    float maxCheck = interp.maxRange.isRange ?
+                        Mathf.Max(interp.maxRange.min, interp.maxRange.max) :
+                        interp.maxRange.min;
+
+                    if (minCheck > 1f || maxCheck > 1f)
+                    {
+                        // Normalize to 0-1 range
+                        RangeOrValue normalizedMin = interp.minRange.isRange ?
+                            new RangeOrValue(interp.minRange.min / 255f, interp.minRange.max / 255f) :
+                            new RangeOrValue(interp.minRange.min / 255f);
+
+                        RangeOrValue normalizedMax = interp.maxRange.isRange ?
+                            new RangeOrValue(interp.maxRange.min / 255f, interp.maxRange.max / 255f) :
+                            new RangeOrValue(interp.maxRange.min / 255f);
+
+                        interp = new InterpolationData(
+                            normalizedMin,
+                            normalizedMax,
+                            interp.easeName,
+                            interp.durationRange,
+                            interp.repeatCount,
+                            interp.isForever,
+                            interp.interpolationType);
+                    }
+                }
+            }
+            else
+            {
+                // Parse as static value
+                if (float.TryParse(value, out float staticValue))
+                {
+                    // Normalize if needed
+                    float normalizedValue = staticValue > 1f ? staticValue / 255f : staticValue;
+
+                    // Create a constant "interpolation" using goto with same min/max
+                    interp = new InterpolationData(
+                        new RangeOrValue(normalizedValue),
+                        new RangeOrValue(normalizedValue),
+                        "linear",
+                        new RangeOrValue(0.01f),
+                        1,
+                        false,
+                        InterpolationType.Goto);
+                }
+            }
+
+            // Assign to the appropriate channel
+            if (interp != null)
+            {
+                switch (channelName.ToLower())
+                {
+                    case "red":
+                        s.colorRInterpolation = interp;
+                        break;
+                    case "green":
+                        s.colorGInterpolation = interp;
+                        break;
+                    case "blue":
+                        s.colorBInterpolation = interp;
+                        break;
+                }
+            }
+        }
+
+        static Color HexToColor(string hex)
+        {
+            if (hex.Length != 6)
+            {
+                Debug.LogWarning($"[Satie] Invalid hex color: {hex}");
+                return Color.white;
+            }
+
+            try
+            {
+                int r = System.Convert.ToInt32(hex.Substring(0, 2), 16);
+                int g = System.Convert.ToInt32(hex.Substring(2, 2), 16);
+                int b = System.Convert.ToInt32(hex.Substring(4, 2), 16);
+                return new Color(r / 255f, g / 255f, b / 255f, 1f);
+            }
+            catch
+            {
+                Debug.LogWarning($"[Satie] Failed to parse hex color: {hex}");
+                return Color.white;
             }
         }
     }
