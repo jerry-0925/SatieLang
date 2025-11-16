@@ -391,6 +391,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   scriptFile: {fileID: 2811297602134710623, guid: a920f2146d4a4450c896db3bfbb1b241, type: 3}
+  randomSeed: 2
   mixerGroups: []
   masterVolume: 1
   masterMute: 0

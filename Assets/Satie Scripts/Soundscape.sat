@@ -1,2 +1,0 @@
-play audio="generation/soft_river.mp3", loop=true
-play audio="ambience/forest.mp3", loop=true

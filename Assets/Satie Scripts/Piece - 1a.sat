@@ -1,5 +1,0 @@
-loop "tomek/" every 5to15:
-    volume = goto(0and0.1 as inquad in 35)
-    pitch  = gobetween(0.8and1.2 as outquad in 5)
-    move = fly, -10to10, 0to10, -5to5, 1
-    visual = trail

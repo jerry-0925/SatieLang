@@ -1,5 +1,0 @@
-loop "music/drone":
-    volume = 0.2
-    pitch = 1
-    move = walk,-10to10,-5to8,1
-    visual = trail and cube
