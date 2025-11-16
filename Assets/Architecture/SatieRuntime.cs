@@ -445,6 +445,19 @@ public class SatieRuntime : MonoBehaviour
             scheduler.CancelAll();
         }
 
+        // Reset DSP clock to start fresh timing
+        if (dspClock != null)
+        {
+            dspClock.Reset();
+        }
+
+        // Reset random seed
+        if (random != null)
+        {
+            int seed = randomSeed == 0 ? System.Environment.TickCount : randomSeed;
+            random.Reset(seed);
+        }
+
         int persistentCount = trackManager.GetPersistentTrackCount();
         Debug.Log($"[SP] HardReset complete. {persistentCount} persistent tracks remain.");
     }
@@ -457,7 +470,12 @@ public class SatieRuntime : MonoBehaviour
         Statement s = track.Statement;
 
         float startsAtDelay = random.Sample(s.starts_at);
-        double startTime = dspClock.CurrentTime + startsAtDelay;
+
+        // Add small buffer (0.1s) to ensure event fires in the future
+        const double SCHEDULE_BUFFER = 0.1;
+        double startTime = dspClock.CurrentTime + startsAtDelay + SCHEDULE_BUFFER;
+
+        Debug.Log($"[DSP] Scheduling {s.kind} '{s.clip}' at DSP time {startTime:F3}s (current: {dspClock.CurrentTime:F3}s, delay: {startsAtDelay:F3}s)");
 
         if (s.kind == "loop")
         {
