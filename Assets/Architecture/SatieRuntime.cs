@@ -308,6 +308,74 @@ public class SatieRuntime : MonoBehaviour
             colorComp.Initialize(dspClock, random, s);
         }
 
+        // ===== ADD DSP EFFECTS =====
+
+        float tailTime = 0f;
+        bool hasDelayOrReverb = false;
+
+        // Reverb
+        if (s.reverbDryWet.isSet || s.reverbRoomSize.isSet || s.reverbDamping.isSet ||
+            s.reverbDryWetInterpolation != null || s.reverbRoomSizeInterpolation != null || s.reverbDampingInterpolation != null)
+        {
+            var reverbComp = go.AddComponent<SatieDSPReverb>();
+            reverbComp.Initialize(dspClock, random, s);
+
+            // Reverb tail: larger room = longer tail
+            float roomSize = s.reverbRoomSize.isSet ? random.Sample(s.reverbRoomSize) : 0.5f;
+            float reverbTail = 2f + roomSize * 4f; // 2-6 seconds based on room size
+            tailTime = Mathf.Max(tailTime, reverbTail);
+            hasDelayOrReverb = true;
+        }
+
+        // Delay
+        if (s.delayDryWet.isSet || s.delayTime.isSet || s.delayFeedback.isSet || s.delayPingPong.isSet ||
+            s.delayDryWetInterpolation != null || s.delayTimeInterpolation != null ||
+            s.delayFeedbackInterpolation != null || s.delayPingPongInterpolation != null)
+        {
+            var delayComp = go.AddComponent<SatieDSPDelay>();
+            delayComp.Initialize(dspClock, random, s);
+
+            // Delay tail: based on time and feedback
+            float delayTimeVal = s.delayTime.isSet ? random.Sample(s.delayTime) : 0.5f;
+            float feedbackVal = s.delayFeedback.isSet ? random.Sample(s.delayFeedback) : 0.5f;
+            // Calculate decay time: time it takes for feedback to drop to -60dB
+            float delayTail = delayTimeVal * Mathf.Log(0.001f) / Mathf.Log(feedbackVal);
+            delayTail = Mathf.Clamp(delayTail, 1f, 10f); // Clamp to reasonable range
+            tailTime = Mathf.Max(tailTime, delayTail);
+            hasDelayOrReverb = true;
+        }
+
+        // Filter
+        if (s.filterCutoff.isSet || s.filterResonance.isSet || s.filterDryWet.isSet || s.filterMode != null ||
+            s.filterCutoffInterpolation != null || s.filterResonanceInterpolation != null || s.filterDryWetInterpolation != null)
+        {
+            var filterComp = go.AddComponent<SatieDSPFilter>();
+            filterComp.Initialize(dspClock, random, s);
+        }
+
+        // Distortion
+        if (s.distortionDrive.isSet || s.distortionDryWet.isSet || s.distortionMode != null ||
+            s.distortionDriveInterpolation != null || s.distortionDryWetInterpolation != null)
+        {
+            var distortionComp = go.AddComponent<SatieDSPDistortion>();
+            distortionComp.Initialize(dspClock, random, s);
+        }
+
+        // EQ
+        if (s.eqLowGain.isSet || s.eqMidGain.isSet || s.eqHighGain.isSet ||
+            s.eqLowGainInterpolation != null || s.eqMidGainInterpolation != null || s.eqHighGainInterpolation != null)
+        {
+            var eqComp = go.AddComponent<SatieDSPEQ>();
+            eqComp.Initialize(dspClock, random, s);
+        }
+
+        // Add tail handler for oneshots with delay/reverb
+        if (s.kind == "oneshot" && hasDelayOrReverb && tailTime > 0f)
+        {
+            var tailHandler = go.AddComponent<SatieDSPTailHandler>();
+            tailHandler.Initialize(src, tailTime, false); // false = oneshot (not loop)
+        }
+
         // Add Steam Audio components if available and source is spatialized
         if (spatialAudio != null && s.wanderType != Statement.WanderType.None)
         {
@@ -566,13 +634,20 @@ public class SatieRuntime : MonoBehaviour
         Statement s = track.Statement;
         AudioSource persistentSource = null;
 
+        // Auto-enable overlap for sounds with delay/reverb (to preserve tails)
+        bool hasDelayOrReverb = (s.delayDryWet.isSet || s.delayTime.isSet || s.delayFeedback.isSet ||
+                                  s.delayDryWetInterpolation != null || s.delayTimeInterpolation != null ||
+                                  s.reverbDryWet.isSet || s.reverbRoomSize.isSet ||
+                                  s.reverbDryWetInterpolation != null || s.reverbRoomSizeInterpolation != null);
+        bool shouldOverlap = s.overlap || hasDelayOrReverb;
+
         // Create recursive callback for repeating
         System.Action scheduleNext = null;
         scheduleNext = () =>
         {
             double currentTime = dspClock.CurrentTime;
 
-            if (s.overlap)
+            if (shouldOverlap)
             {
                 // Spawn new source each time
                 var src = SpawnSource(s, anySoloActive);

@@ -390,7 +390,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 571ab9772484754459a267c6b3e548c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scriptFile: {fileID: 2811297602134710623, guid: a920f2146d4a4450c896db3bfbb1b241, type: 3}
+  scriptFile: {fileID: 2811297602134710623, guid: 50d69df2bc2f94a8e82320fcb4e202d6, type: 3}
   randomSeed: 2
   mixerGroups: []
   masterVolume: 1
@@ -462,7 +462,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1228820742}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6789012345678abcdef01, type: 3}
   m_Name: 

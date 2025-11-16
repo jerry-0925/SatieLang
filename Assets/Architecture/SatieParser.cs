@@ -44,6 +44,50 @@ namespace Satie
         public InterpolationData colorRInterpolation;
         public InterpolationData colorGInterpolation;
         public InterpolationData colorBInterpolation;
+
+        // ===== DSP EFFECTS =====
+
+        // Reverb
+        public RangeOrValue reverbDryWet = RangeOrValue.Null;
+        public RangeOrValue reverbRoomSize = RangeOrValue.Null;
+        public RangeOrValue reverbDamping = RangeOrValue.Null;
+        public InterpolationData reverbDryWetInterpolation;
+        public InterpolationData reverbRoomSizeInterpolation;
+        public InterpolationData reverbDampingInterpolation;
+
+        // Delay
+        public RangeOrValue delayDryWet = RangeOrValue.Null;
+        public RangeOrValue delayTime = RangeOrValue.Null;
+        public RangeOrValue delayFeedback = RangeOrValue.Null;
+        public RangeOrValue delayPingPong = RangeOrValue.Null;
+        public InterpolationData delayDryWetInterpolation;
+        public InterpolationData delayTimeInterpolation;
+        public InterpolationData delayFeedbackInterpolation;
+        public InterpolationData delayPingPongInterpolation;
+
+        // Filter
+        public string filterMode; // lowpass, highpass, bandpass, notch, peak
+        public RangeOrValue filterCutoff = RangeOrValue.Null;
+        public RangeOrValue filterResonance = RangeOrValue.Null;
+        public RangeOrValue filterDryWet = RangeOrValue.Null;
+        public InterpolationData filterCutoffInterpolation;
+        public InterpolationData filterResonanceInterpolation;
+        public InterpolationData filterDryWetInterpolation;
+
+        // Distortion
+        public string distortionMode; // softclip, hardclip, tanh, cubic, asymmetric
+        public RangeOrValue distortionDrive = RangeOrValue.Null;
+        public RangeOrValue distortionDryWet = RangeOrValue.Null;
+        public InterpolationData distortionDriveInterpolation;
+        public InterpolationData distortionDryWetInterpolation;
+
+        // EQ
+        public RangeOrValue eqLowGain = RangeOrValue.Null;
+        public RangeOrValue eqMidGain = RangeOrValue.Null;
+        public RangeOrValue eqHighGain = RangeOrValue.Null;
+        public InterpolationData eqLowGainInterpolation;
+        public InterpolationData eqMidGainInterpolation;
+        public InterpolationData eqHighGainInterpolation;
     }
 
     public readonly struct RangeOrValue
@@ -262,6 +306,13 @@ namespace Satie
                     case "visual": ParseVisual(s, v); break;
                     case "move": ParseMove(s,v); break;
                     case "color": ParseColor(s, v); break;
+
+                    // ===== DSP EFFECTS =====
+                    case "reverb": ParseReverb(s, v); break;
+                    case "delay": ParseDelay(s, v); break;
+                    case "filter": ParseFilter(s, v); break;
+                    case "distortion": ParseDistortion(s, v); break;
+                    case "eq": ParseEQ(s, v); break;
                 }
             }
             return s;
@@ -1055,6 +1106,196 @@ namespace Satie
             {
                 Debug.LogWarning($"[Satie] Failed to parse hex color: {hex}");
                 return Color.white;
+            }
+        }
+
+        // ===== DSP EFFECT PARSERS =====
+
+        static void ParseReverb(Statement s, string v)
+        {
+            // Syntax: reverb wet 0.5 size 0.8 damping 0.6
+            // Or: reverb wet goto(0.1and0.9 in 8)
+
+            var wetMatch = Regex.Match(v, @"\b(?:wet|drywet)\s+(.+?)(?=\s+(?:size|roomsize|damp|damping)\s+|$)", RegexOptions.IgnoreCase);
+            if (wetMatch.Success)
+            {
+                string wetValue = wetMatch.Groups[1].Value.Trim();
+                if (wetValue.Contains("interpolate") || wetValue.Contains("goto") || wetValue.Contains("gobetween"))
+                    s.reverbDryWetInterpolation = InterpolationData.Parse(wetValue);
+                else
+                    s.reverbDryWet = RangeOrValue.Parse(wetValue);
+            }
+
+            var sizeMatch = Regex.Match(v, @"\b(?:size|roomsize)\s+(.+?)(?=\s+(?:wet|drywet|damp|damping)\s+|$)", RegexOptions.IgnoreCase);
+            if (sizeMatch.Success)
+            {
+                string sizeValue = sizeMatch.Groups[1].Value.Trim();
+                if (sizeValue.Contains("interpolate") || sizeValue.Contains("goto") || sizeValue.Contains("gobetween"))
+                    s.reverbRoomSizeInterpolation = InterpolationData.Parse(sizeValue);
+                else
+                    s.reverbRoomSize = RangeOrValue.Parse(sizeValue);
+            }
+
+            var dampMatch = Regex.Match(v, @"\b(?:damp|damping)\s+(.+?)(?=\s+(?:wet|drywet|size|roomsize)\s+|$)", RegexOptions.IgnoreCase);
+            if (dampMatch.Success)
+            {
+                string dampValue = dampMatch.Groups[1].Value.Trim();
+                if (dampValue.Contains("interpolate") || dampValue.Contains("goto") || dampValue.Contains("gobetween"))
+                    s.reverbDampingInterpolation = InterpolationData.Parse(dampValue);
+                else
+                    s.reverbDamping = RangeOrValue.Parse(dampValue);
+            }
+        }
+
+        static void ParseDelay(Statement s, string v)
+        {
+            // Syntax: delay wet 0.5 time 0.375 feedback 0.6 pingpong 1
+
+            var wetMatch = Regex.Match(v, @"\b(?:wet|drywet)\s+(.+?)(?=\s+(?:time|feedback|pingpong)\s+|$)", RegexOptions.IgnoreCase);
+            if (wetMatch.Success)
+            {
+                string wetValue = wetMatch.Groups[1].Value.Trim();
+                if (wetValue.Contains("interpolate") || wetValue.Contains("goto") || wetValue.Contains("gobetween"))
+                    s.delayDryWetInterpolation = InterpolationData.Parse(wetValue);
+                else
+                    s.delayDryWet = RangeOrValue.Parse(wetValue);
+            }
+
+            var timeMatch = Regex.Match(v, @"\btime\s+(.+?)(?=\s+(?:wet|drywet|feedback|pingpong)\s+|$)", RegexOptions.IgnoreCase);
+            if (timeMatch.Success)
+            {
+                string timeValue = timeMatch.Groups[1].Value.Trim();
+                if (timeValue.Contains("interpolate") || timeValue.Contains("goto") || timeValue.Contains("gobetween"))
+                    s.delayTimeInterpolation = InterpolationData.Parse(timeValue);
+                else
+                    s.delayTime = RangeOrValue.Parse(timeValue);
+            }
+
+            var feedbackMatch = Regex.Match(v, @"\bfeedback\s+(.+?)(?=\s+(?:wet|drywet|time|pingpong)\s+|$)", RegexOptions.IgnoreCase);
+            if (feedbackMatch.Success)
+            {
+                string feedbackValue = feedbackMatch.Groups[1].Value.Trim();
+                if (feedbackValue.Contains("interpolate") || feedbackValue.Contains("goto") || feedbackValue.Contains("gobetween"))
+                    s.delayFeedbackInterpolation = InterpolationData.Parse(feedbackValue);
+                else
+                    s.delayFeedback = RangeOrValue.Parse(feedbackValue);
+            }
+
+            var pingpongMatch = Regex.Match(v, @"\bpingpong\s+(.+?)(?=\s+(?:wet|drywet|time|feedback)\s+|$)", RegexOptions.IgnoreCase);
+            if (pingpongMatch.Success)
+            {
+                string pingpongValue = pingpongMatch.Groups[1].Value.Trim();
+                if (pingpongValue.Contains("interpolate") || pingpongValue.Contains("goto") || pingpongValue.Contains("gobetween"))
+                    s.delayPingPongInterpolation = InterpolationData.Parse(pingpongValue);
+                else
+                    s.delayPingPong = RangeOrValue.Parse(pingpongValue);
+            }
+        }
+
+        static void ParseFilter(Statement s, string v)
+        {
+            // Syntax: filter mode lowpass cutoff 1000 resonance 2 wet 1
+
+            var modeMatch = Regex.Match(v, @"\bmode\s+(lowpass|highpass|bandpass|notch|peak)", RegexOptions.IgnoreCase);
+            if (modeMatch.Success)
+            {
+                s.filterMode = modeMatch.Groups[1].Value.ToLower();
+            }
+
+            var cutoffMatch = Regex.Match(v, @"\b(?:cutoff|freq)\s+(.+?)(?=\s+(?:mode|resonance|q|wet|drywet)\s+|$)", RegexOptions.IgnoreCase);
+            if (cutoffMatch.Success)
+            {
+                string cutoffValue = cutoffMatch.Groups[1].Value.Trim();
+                if (cutoffValue.Contains("interpolate") || cutoffValue.Contains("goto") || cutoffValue.Contains("gobetween"))
+                    s.filterCutoffInterpolation = InterpolationData.Parse(cutoffValue);
+                else
+                    s.filterCutoff = RangeOrValue.Parse(cutoffValue);
+            }
+
+            var resonanceMatch = Regex.Match(v, @"\b(?:resonance|q)\s+(.+?)(?=\s+(?:mode|cutoff|freq|wet|drywet)\s+|$)", RegexOptions.IgnoreCase);
+            if (resonanceMatch.Success)
+            {
+                string resonanceValue = resonanceMatch.Groups[1].Value.Trim();
+                if (resonanceValue.Contains("interpolate") || resonanceValue.Contains("goto") || resonanceValue.Contains("gobetween"))
+                    s.filterResonanceInterpolation = InterpolationData.Parse(resonanceValue);
+                else
+                    s.filterResonance = RangeOrValue.Parse(resonanceValue);
+            }
+
+            var wetMatch = Regex.Match(v, @"\b(?:wet|drywet)\s+(.+?)(?=\s+(?:mode|cutoff|freq|resonance|q)\s+|$)", RegexOptions.IgnoreCase);
+            if (wetMatch.Success)
+            {
+                string wetValue = wetMatch.Groups[1].Value.Trim();
+                if (wetValue.Contains("interpolate") || wetValue.Contains("goto") || wetValue.Contains("gobetween"))
+                    s.filterDryWetInterpolation = InterpolationData.Parse(wetValue);
+                else
+                    s.filterDryWet = RangeOrValue.Parse(wetValue);
+            }
+        }
+
+        static void ParseDistortion(Statement s, string v)
+        {
+            // Syntax: distortion mode tanh drive 0.5 wet 1
+
+            var modeMatch = Regex.Match(v, @"\bmode\s+(softclip|hardclip|tanh|cubic|asymmetric)", RegexOptions.IgnoreCase);
+            if (modeMatch.Success)
+            {
+                s.distortionMode = modeMatch.Groups[1].Value.ToLower();
+            }
+
+            var driveMatch = Regex.Match(v, @"\bdrive\s+(.+?)(?=\s+(?:mode|wet|drywet)\s+|$)", RegexOptions.IgnoreCase);
+            if (driveMatch.Success)
+            {
+                string driveValue = driveMatch.Groups[1].Value.Trim();
+                if (driveValue.Contains("interpolate") || driveValue.Contains("goto") || driveValue.Contains("gobetween"))
+                    s.distortionDriveInterpolation = InterpolationData.Parse(driveValue);
+                else
+                    s.distortionDrive = RangeOrValue.Parse(driveValue);
+            }
+
+            var wetMatch = Regex.Match(v, @"\b(?:wet|drywet)\s+(.+?)(?=\s+(?:mode|drive)\s+|$)", RegexOptions.IgnoreCase);
+            if (wetMatch.Success)
+            {
+                string wetValue = wetMatch.Groups[1].Value.Trim();
+                if (wetValue.Contains("interpolate") || wetValue.Contains("goto") || wetValue.Contains("gobetween"))
+                    s.distortionDryWetInterpolation = InterpolationData.Parse(wetValue);
+                else
+                    s.distortionDryWet = RangeOrValue.Parse(wetValue);
+            }
+        }
+
+        static void ParseEQ(Statement s, string v)
+        {
+            // Syntax: eq low 3 mid -2 high 1
+
+            var lowMatch = Regex.Match(v, @"\blow\s+(.+?)(?=\s+(?:mid|high)\s+|$)", RegexOptions.IgnoreCase);
+            if (lowMatch.Success)
+            {
+                string lowValue = lowMatch.Groups[1].Value.Trim();
+                if (lowValue.Contains("interpolate") || lowValue.Contains("goto") || lowValue.Contains("gobetween"))
+                    s.eqLowGainInterpolation = InterpolationData.Parse(lowValue);
+                else
+                    s.eqLowGain = RangeOrValue.Parse(lowValue);
+            }
+
+            var midMatch = Regex.Match(v, @"\bmid\s+(.+?)(?=\s+(?:low|high)\s+|$)", RegexOptions.IgnoreCase);
+            if (midMatch.Success)
+            {
+                string midValue = midMatch.Groups[1].Value.Trim();
+                if (midValue.Contains("interpolate") || midValue.Contains("goto") || midValue.Contains("gobetween"))
+                    s.eqMidGainInterpolation = InterpolationData.Parse(midValue);
+                else
+                    s.eqMidGain = RangeOrValue.Parse(midValue);
+            }
+
+            var highMatch = Regex.Match(v, @"\bhigh\s+(.+?)(?=\s+(?:low|mid)\s+|$)", RegexOptions.IgnoreCase);
+            if (highMatch.Success)
+            {
+                string highValue = highMatch.Groups[1].Value.Trim();
+                if (highValue.Contains("interpolate") || highValue.Contains("goto") || highValue.Contains("gobetween"))
+                    s.eqHighGainInterpolation = InterpolationData.Parse(highValue);
+                else
+                    s.eqHighGain = RangeOrValue.Parse(highValue);
             }
         }
     }

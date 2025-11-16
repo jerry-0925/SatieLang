@@ -1,0 +1,186 @@
+
+
+
+# color
+group music
+volume 1
+color red 100 green gobetween(40and255 as sine in 10) blue gobetween(0and100 in 10)
+    3 * oneshot piano/1to5 every 4to10
+        volume 0.5
+        pitch 1to1.5
+        move x -10to10 speed 1
+        visual trail
+        delay wet 0.5 time 0.375 feedback 0.6 pingpong 1
+    loop ambience/water
+        volume 0.3
+        filter mode lowpass cutoff gobetween(100and3000 in 5)
+
+
+
+
+
+comment
+    DSP Effects Examples for SatieLang
+
+    Available effects:
+    - reverb wet 0.5 size 0.8 damping 0.6
+    - delay wet 0.5 time 0.375 feedback 0.6 pingpong 1
+    - filter mode lowpass cutoff 1000 resonance 2
+    - distortion mode tanh drive 0.5
+    - eq low 3 mid -2 high 1
+
+    All parameters support:
+    - Static: reverb wet 0.5
+    - Ranges: delay time 0.2to0.8
+    - Animation: filter cutoff goto(200and8000 in 10)
+
+# ===== REVERB EXAMPLES =====
+
+# Static reverb on ambient loop
+loop ambience/forest
+    volume 0.3
+    reverb wet 0.5 size 0.8 damping 0.6
+
+# Animated reverb - grows over time
+loop synth/pad
+    volume 0.4
+    reverb wet goto(0.1and0.9 in 8) size 0.7
+
+# Oscillating reverb
+oneshot piano/1to5 every 3to6
+    volume 0.6
+    pitch 0.8to1.2
+    reverb wet gobetween(0.2and0.7 in 2)
+    fade_out 2
+
+# ===== DELAY EXAMPLES =====
+
+# Ping-pong delay on percussion
+oneshot drums/snare every 2
+    volume 0.5
+    delay wet 0.4 time 0.375 feedback 0.6 pingpong 1
+
+# Animated delay time (tape-style)
+loop guitar/chord
+    volume 0.5
+    delay wet 0.5 time gobetween(0.2and0.8 in 4) feedback 0.5
+
+# Short delay for thickening
+oneshot vocal/phrase every 8
+    volume 0.7
+    delay wet 0.3 time 0.05 feedback 0.3
+
+# ===== FILTER EXAMPLES =====
+
+# Low-pass filter sweep
+loop bass/synth
+    volume 0.6
+    filter mode lowpass cutoff goto(200and8000 in 10) resonance 2
+
+# High-pass filter (remove rumble)
+loop ambience/wind
+    volume 0.4
+    filter mode highpass cutoff 300
+
+# Oscillating bandpass (wah effect)
+oneshot guitar/lead every 4
+    volume 0.7
+    filter mode bandpass cutoff gobetween(400and3000 in 1) resonance 5
+    fade_out 3
+
+# Notch filter (remove specific frequency)
+loop drone/low
+    volume 0.5
+    filter mode notch cutoff 1000 resonance 8
+
+# ===== DISTORTION EXAMPLES =====
+
+# Soft distortion (warm)
+loop bass/electric
+    volume 0.6
+    distortion mode tanh drive 0.4
+
+# Hard clipping (aggressive)
+oneshot drums/kick every 1
+    volume 0.7
+    distortion mode hardclip drive 0.6
+
+# Animated distortion drive
+loop guitar/power
+    volume 0.5
+    distortion mode cubic drive gobetween(0.2and0.8 in 3)
+
+# Asymmetric (vintage diode)
+oneshot synth/lead every 4to8
+    volume 0.6
+    distortion mode asymmetric drive 0.5
+    fade_out 2
+
+# ===== EQ EXAMPLES =====
+
+# Boost low and high, cut mid (smile curve)
+loop drums/full
+    volume 0.6
+    eq low 3 mid -6 high 2
+
+# Animated EQ (filter sweep with EQ)
+loop synth/texture
+    volume 0.5
+    eq low goto(-6and6 in 8) high goto(6and-6 in 8)
+
+# ===== COMBINED EFFECTS =====
+
+# Multiple effects on one sound - beautiful syntax!
+loop ambient/drone
+    volume 0.4
+    reverb wet 0.8 size 0.9
+    delay wet 0.3 time 0.5 feedback 0.4
+    filter mode lowpass cutoff 2000
+    eq low -3 high -6
+
+# Complex animated effects
+oneshot impact/explosion every 10to20
+    volume 0.8
+    distortion mode softclip drive 0.7
+    delay wet 0.5 time 0.25 feedback gobetween(0.3and0.7 in 1)
+    reverb wet 0.6 size 0.8
+    filter mode lowpass cutoff goto(8000and200 in 2)
+    fade_out 3
+
+# Spatial sound with reverb
+loop ambience/birds
+    volume 0.5
+    move x -10to10 z -10to10 speed 1
+    reverb wet gobetween(0.3and0.7 in 5) size 0.6
+    filter mode highpass cutoff 800
+
+# Rhythmic delay with movement
+oneshot perc/click every 1
+    delay wet 0.5 time 0.375 feedback 0.6 pingpong 1
+    move x -5to5 z -5to5 speed 2
+    reverb wet 0.3
+
+# Evolving filtered pad
+loop synth/ambient
+    volume 0.4
+    filter mode lowpass cutoff gobetween(300and5000 in 8) resonance 3
+    reverb wet 0.7 size 0.9 damping 0.7
+    eq low -3 high goto(-6and3 in 10)
+
+# Distorted bass with filter
+loop bass/sub
+    volume 0.7
+    distortion mode tanh drive 0.6
+    filter mode lowpass cutoff 800 resonance 1
+    eq low 6 mid -3
+
+# Clean example following "move" style perfectly
+loop ambience/rain
+    volume 0.3
+    reverb wet 0.6 size 0.8 damping 0.5
+    filter mode lowpass cutoff 3000
+    move x -10to10 z -10to10 speed 0.5
+    color white
+    visual trail
+
+endcomment
