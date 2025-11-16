@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -12,6 +11,16 @@ public class SatieRuntime : MonoBehaviour
 
     // Track manager handles all voice lifecycle
     private SatieTrackManager trackManager;
+
+    // DSP timing infrastructure
+    [Header("DSP Timing")]
+    [Tooltip("Random seed for reproducible renders (0 = time-based)")]
+    [SerializeField] private int randomSeed = 0;
+
+    private SatieDSPClock dspClock;
+    private SatieScheduler scheduler;
+    private SatieRandom random;
+    private SatieDSPFade dspFade;
 
     // Mixer groups for DAW-style control
     [SerializeField] private List<SatieMixerGroup> mixerGroups = new List<SatieMixerGroup>();
@@ -35,6 +44,22 @@ public class SatieRuntime : MonoBehaviour
             Debug.LogError("SatieRuntime: TextAsset missing.");
             return;
         }
+
+        // Initialize DSP timing infrastructure
+        dspClock = new SatieDSPClock();
+        dspClock.Start();
+
+        scheduler = new SatieScheduler(dspClock);
+
+        int seed = randomSeed == 0 ? System.Environment.TickCount : randomSeed;
+        random = new SatieRandom(seed);
+
+        var fadeGO = new GameObject("[Satie] DSP Fade Manager");
+        fadeGO.transform.SetParent(transform);
+        dspFade = fadeGO.AddComponent<SatieDSPFade>();
+        dspFade.Initialize(dspClock);
+
+        Debug.Log($"[SatieRuntime] Initialized (seed: {seed})");
 
         // Initialize track manager BEFORE Sync
         trackManager = new SatieTrackManager(this);
@@ -60,6 +85,21 @@ public class SatieRuntime : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.R) && !Input.GetKey(KeyCode.LeftShift)) Sync(false);
         if (Input.GetKeyDown(KeyCode.R) &&  Input.GetKey(KeyCode.LeftShift)) Sync(true);
+
+        // Process scheduled events
+        if (scheduler != null)
+        {
+            scheduler.Process();
+        }
+    }
+#else
+    void Update()
+    {
+        // Process scheduled events
+        if (scheduler != null)
+        {
+            scheduler.Process();
+        }
     }
 #endif
     
@@ -146,8 +186,9 @@ public class SatieRuntime : MonoBehaviour
 
                 // Create new track
                 var track = trackManager.CreateTrack(stmtKey, stmt);
-                var coroutine = StartCoroutine(RunStmt(track, anySolo));
-                track.Coroutine = coroutine;
+
+                // DSP-based playback
+                ScheduleDSPPlayback(track, anySolo);
             }
             lineNumber++;
         }
@@ -161,119 +202,9 @@ public class SatieRuntime : MonoBehaviour
         trackManager.SetTrackMute(stmtKey, shouldBeMuted);
     }
 
-    IEnumerator RunStmt(SatieTrack track, bool anySoloActive)
-    {
-        Statement s = track.Statement;
-
-        yield return new WaitForSeconds(s.starts_at.Sample());
-
-        if (s.kind == "loop")  yield return HandleLoop(track, anySoloActive);
-        else yield return HandleOneShot(track, anySoloActive);
-
-        // Cleanup when statement finishes (non-persistent tracks auto-remove)
-        if (!track.IsPersistent)
-        {
-            trackManager.StopTrack(track.Key);
-        }
-    }
-    
-    IEnumerator HandleLoop(SatieTrack track, bool anySoloActive)
-    {
-        Statement s = track.Statement;
-        var src = SpawnSource(s, anySoloActive);
-        if (!src) yield break;
-
-        // Track this source in the track
-        track.AddSource(src);
-
-        if (s.duration.isSet)
-        {
-            float fadeOut = s.fade_out.Sample();
-            yield return StopAfter(src, s.duration.Sample(), fadeOut);
-        }
-        else
-        {
-            // Loop with no duration - play indefinitely, never return
-            while (true)
-            {
-                yield return null;
-            }
-        }
-    }
-
-    IEnumerator HandleOneShot(SatieTrack track, bool anySoloActive)
-    {
-        Statement s = track.Statement;
-        Debug.Log($"[HandleOneShot] clip={s.clip}, every.isSet={s.every.isSet}, every.min={s.every.min}, every.max={s.every.max}");
-
-        // If no 'every' is set, play once and exit
-        if (!s.every.isSet)
-        {
-            Debug.Log($"[HandleOneShot] Playing once and exiting");
-            var src = SpawnSource(s, anySoloActive);
-            if (src) track.AddSource(src);
-            yield break;
-        }
-
-        Debug.Log($"[HandleOneShot] Entering repeat loop");
-        // Repeating oneshot logic
-        AudioSource persistent = null;
-
-        while (true)
-        {
-            if (s.overlap)
-            {
-                var src = SpawnSource(s, anySoloActive);
-                if (!src) yield break;
-                track.AddSource(src);
-            }
-            else
-            {
-                if (persistent == null)
-                {
-                    persistent = SpawnSource(s, anySoloActive);
-                    if (!persistent) yield break;
-                    track.AddSource(persistent);
-                }
-
-                string clipName = SatieUtil.ResolveClip(s.clip);
-                var newClip = Resources.Load<AudioClip>(SatieParser.PathFor(clipName));
-                if (!newClip) { Debug.LogWarning($"[Satie] Audio clip '{clipName}' missing."); yield break; }
-
-                persistent.clip = newClip;
-
-                if (s.pitchInterpolation == null)
-                    persistent.pitch = s.pitch.Sample();
-
-                float targetVol  = s.volume.Sample();
-
-                // Handle initial volume based on interpolation type
-                if (s.volumeInterpolation != null &&
-                    s.volumeInterpolation.interpolationType == InterpolationType.Goto)
-                {
-                    // For goto, start at the min value to avoid clicks
-                    persistent.volume = s.volumeInterpolation.minValue;
-                }
-                else if (s.volumeInterpolation == null && s.fade_in.isSet)
-                    StartCoroutine(Fade(persistent, 0f, targetVol, s.fade_in.Sample()));
-                else if (s.volumeInterpolation == null)
-                    persistent.volume = targetVol;
-
-                persistent.time = 0f;
-                persistent.Play();
-
-                float fadeOut = s.fade_out.Sample();
-                if (fadeOut > 0f)
-                    StartCoroutine(StopAfter(persistent, persistent.clip.length, fadeOut));
-            }
-
-            yield return new WaitForSeconds(s.every.Sample());
-        }
-    }
-    
     AudioSource SpawnSource(Statement s, bool anySoloActive)
     {
-        string clipName = SatieUtil.ResolveClip(s.clip);
+        string clipName = SatieUtil.ResolveClip(s.clip, random);
         string fullPath = SatieParser.PathFor(clipName);
 
         var clip = Resources.Load<AudioClip>(fullPath);
@@ -315,12 +246,13 @@ public class SatieRuntime : MonoBehaviour
         }
         else
         {
-            src.pitch = s.pitch.Sample();
+            src.pitch = random.Sample(s.pitch);
         }
 
         if (s.volumeInterpolation != null || s.pitchInterpolation != null)
         {
-            var interpComp = go.AddComponent<InterpolatedAudioSource>();
+            var interpComp = go.AddComponent<SatieDSPInterpolator>();
+            interpComp.Initialize(dspClock, random);
             interpComp.SetupInterpolations(s);
         }
 
@@ -352,17 +284,18 @@ public class SatieRuntime : MonoBehaviour
             s.wanderType == Statement.WanderType.Fly)
         {
             var mover = go.AddComponent<SSpatial>();
+            mover.Initialize(dspClock, random);
             mover.type = s.wanderType;
             mover.minPos = s.areaMin;
             mover.maxPos = s.areaMax;
-            mover.hz = s.wanderHz.Sample();
+            mover.hz = random.Sample(s.wanderHz);
         }
         else if (s.wanderType == Statement.WanderType.Fixed)
         {
             UnityEngine.Vector3 p = new UnityEngine.Vector3(
-                Random.Range(s.areaMin.x, s.areaMax.x),
-                Random.Range(s.areaMin.y, s.areaMax.y),
-                Random.Range(s.areaMin.z, s.areaMax.z));
+                random.Range(s.areaMin.x, s.areaMax.x),
+                random.Range(s.areaMin.y, s.areaMax.y),
+                random.Range(s.areaMin.z, s.areaMax.z));
             go.transform.position = p;
         }
 
@@ -394,11 +327,13 @@ public class SatieRuntime : MonoBehaviour
         }
         else if (s.volumeInterpolation == null && s.fade_in.isSet)
         {
-            StartCoroutine(Fade(src, 0f, s.volume.Sample(), s.fade_in.Sample()));
+            float targetVol = random.Sample(s.volume);
+            float fadeInDur = random.Sample(s.fade_in);
+            dspFade.FadeVolume(src, 0f, targetVol, fadeInDur);
         }
         else if (s.volumeInterpolation == null)
         {
-            src.volume = s.volume.Sample();
+            src.volume = random.Sample(s.volume);
         }
 
         return src;
@@ -411,8 +346,8 @@ public class SatieRuntime : MonoBehaviour
             if (visual.StartsWith("object:"))
             {
                 // Load prefab from Resources
-                string prefabPath = visual.Substring(7); // Remove "object:" prefix
-                string fullPath = $"Prefabs/{SatieUtil.ResolveClip(prefabPath)}";
+                string prefabPath = visual.Substring(7);
+                string fullPath = $"Prefabs/{SatieUtil.ResolveClip(prefabPath, random)}";
                 GameObject prefab = Resources.Load<GameObject>(fullPath);
                 
                 if (prefab != null)
@@ -467,7 +402,7 @@ public class SatieRuntime : MonoBehaviour
         tr.material = new UnityEngine.Material(Shader.Find("Sprites/Default"));
         tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-        Color start = new Color(Random.value, Random.value, Random.value, 1f);
+        Color start = new Color(random.Range(0f, 1f), random.Range(0f, 1f), random.Range(0f, 1f), 1f);
         Color end   = new Color(start.r, start.g, start.b, 0f);
 
         var grad = new Gradient();
@@ -483,39 +418,17 @@ public class SatieRuntime : MonoBehaviour
         GameObject primitive = GameObject.CreatePrimitive(type);
         primitive.transform.SetParent(go.transform);
         primitive.transform.localPosition = UnityEngine.Vector3.zero;
-        primitive.transform.localScale = UnityEngine.Vector3.one * 0.5f; // Scale down a bit
-        
-        // Remove collider as we don't need physics
+        primitive.transform.localScale = UnityEngine.Vector3.one * 0.5f;
+
         Collider col = primitive.GetComponent<Collider>();
         if (col) Destroy(col);
-        
-        // Add a random color to the material
+
         Renderer rend = primitive.GetComponent<Renderer>();
         if (rend)
         {
             rend.material = new UnityEngine.Material(Shader.Find("Standard"));
-            rend.material.color = new Color(Random.value, Random.value, Random.value, 0.8f);
+            rend.material.color = new Color(random.Range(0f, 1f), random.Range(0f, 1f), random.Range(0f, 1f), 0.8f);
         }
-    }
-
-    IEnumerator StopAfter(AudioSource src, float secs, float fadeOut)
-    {
-        yield return new WaitForSeconds(secs - fadeOut);
-        yield return Fade(src, src.volume, 0f, fadeOut);
-        if (src) src.Stop();
-    }
-
-    IEnumerator Fade(AudioSource src, float from, float to, float dur)
-    {
-        if (dur <= 0f) { if (src) src.volume = to; yield break; }
-        float t = 0f;
-        while (t < dur && src)
-        {
-            src.volume = Mathf.Lerp(from, to, t / dur);
-            t += Time.deltaTime;
-            yield return null;
-        }
-        if (src) src.volume = to;
     }
 
     void HardReset()
@@ -526,8 +439,232 @@ public class SatieRuntime : MonoBehaviour
         // Stop all non-persistent tracks
         trackManager.StopAllTracks(includePersistent: false);
 
+        // Cancel all scheduled DSP events
+        if (scheduler != null)
+        {
+            scheduler.CancelAll();
+        }
+
         int persistentCount = trackManager.GetPersistentTrackCount();
         Debug.Log($"[SP] HardReset complete. {persistentCount} persistent tracks remain.");
+    }
+
+    /// <summary>
+    /// Schedule playback for a track
+    /// </summary>
+    void ScheduleDSPPlayback(SatieTrack track, bool anySoloActive)
+    {
+        Statement s = track.Statement;
+
+        float startsAtDelay = random.Sample(s.starts_at);
+        double startTime = dspClock.CurrentTime + startsAtDelay;
+
+        if (s.kind == "loop")
+        {
+            ScheduleDSPLoop(track, startTime, anySoloActive);
+        }
+        else
+        {
+            ScheduleDSPOneShot(track, startTime, anySoloActive);
+        }
+    }
+
+    /// <summary>
+    /// Schedule a loop statement
+    /// </summary>
+    void ScheduleDSPLoop(SatieTrack track, double startTime, bool anySoloActive)
+    {
+        Statement s = track.Statement;
+
+        // Schedule the initial play event
+        var playEvent = SatieAudioEvent.Callback(
+            dspClock.SecondsToSamples(startTime),
+            () => {
+                var src = SpawnSource(s, anySoloActive);
+                if (src)
+                {
+                    track.AddSource(src);
+
+                    // If duration is set, schedule stop event
+                    if (s.duration.isSet)
+                    {
+                        float duration = random.Sample(s.duration);
+                        float fadeOut = random.Sample(s.fade_out);
+                        double stopTime = dspClock.CurrentTime + duration;
+
+                        ScheduleDSPStopAfter(src, stopTime, fadeOut, track.Key);
+                    }
+                }
+            },
+            $"Loop Start: {s.clip}"
+        );
+
+        scheduler.Schedule(playEvent);
+
+        Debug.Log($"[DSP] Scheduled loop '{s.clip}' at {startTime:F3}s");
+    }
+
+    /// <summary>
+    /// Schedule a oneshot statement
+    /// </summary>
+    void ScheduleDSPOneShot(SatieTrack track, double startTime, bool anySoloActive)
+    {
+        Statement s = track.Statement;
+
+        if (!s.every.isSet)
+        {
+            // Play once
+            var playEvent = SatieAudioEvent.Callback(
+                dspClock.SecondsToSamples(startTime),
+                () => {
+                    var src = SpawnSource(s, anySoloActive);
+                    if (src) track.AddSource(src);
+                },
+                $"OneShot: {s.clip}"
+            );
+            scheduler.Schedule(playEvent);
+
+            Debug.Log($"[DSP] Scheduled oneshot '{s.clip}' at {startTime:F3}s");
+        }
+        else
+        {
+            // Repeating oneshot - schedule first play and chain subsequent plays
+            ScheduleDSPRepeatingOneShot(track, startTime, anySoloActive);
+        }
+    }
+
+    /// <summary>
+    /// Schedule repeating oneshot events
+    /// </summary>
+    void ScheduleDSPRepeatingOneShot(SatieTrack track, double startTime, bool anySoloActive)
+    {
+        Statement s = track.Statement;
+        AudioSource persistentSource = null;
+
+        // Create recursive callback for repeating
+        System.Action scheduleNext = null;
+        scheduleNext = () =>
+        {
+            double currentTime = dspClock.CurrentTime;
+
+            if (s.overlap)
+            {
+                // Spawn new source each time
+                var src = SpawnSource(s, anySoloActive);
+                if (src) track.AddSource(src);
+            }
+            else
+            {
+                // Reuse persistent source
+                if (persistentSource == null)
+                {
+                    persistentSource = SpawnSource(s, anySoloActive);
+                    if (persistentSource) track.AddSource(persistentSource);
+                }
+                else
+                {
+                    // Update clip and parameters
+                    string clipName = SatieUtil.ResolveClip(s.clip, random);
+                    var newClip = Resources.Load<AudioClip>(SatieParser.PathFor(clipName));
+                    if (newClip)
+                    {
+                        persistentSource.clip = newClip;
+
+                        if (s.pitchInterpolation == null)
+                            persistentSource.pitch = random.Sample(s.pitch);
+
+                        float targetVol = random.Sample(s.volume);
+
+                        if (s.volumeInterpolation != null &&
+                            s.volumeInterpolation.interpolationType == InterpolationType.Goto)
+                        {
+                            persistentSource.volume = s.volumeInterpolation.minValue;
+                        }
+                        else if (s.volumeInterpolation == null && s.fade_in.isSet)
+                        {
+                            // Use DSP fade
+                            float fadeInDur = random.Sample(s.fade_in);
+                            dspFade.FadeVolume(persistentSource, 0f, targetVol, fadeInDur);
+                        }
+                        else if (s.volumeInterpolation == null)
+                        {
+                            persistentSource.volume = targetVol;
+                        }
+
+                        persistentSource.time = 0f;
+                        persistentSource.Play();
+
+                        float fadeOut = random.Sample(s.fade_out);
+                        if (fadeOut > 0f)
+                        {
+                            double fadeStartTime = dspClock.CurrentTime + (persistentSource.clip.length - fadeOut);
+                            var fadeEvent = SatieAudioEvent.Callback(
+                                dspClock.SecondsToSamples(fadeStartTime),
+                                () => {
+                                    if (persistentSource)
+                                        dspFade.FadeVolume(persistentSource, persistentSource.volume, 0f, fadeOut);
+                                },
+                                "Fade Out"
+                            );
+                            scheduler.Schedule(fadeEvent);
+                        }
+                    }
+                }
+            }
+
+            // Schedule next repetition
+            float interval = random.Sample(s.every);
+            double nextTime = currentTime + interval;
+
+            var nextEvent = SatieAudioEvent.Callback(
+                dspClock.SecondsToSamples(nextTime),
+                scheduleNext,
+                $"Repeat OneShot: {s.clip}"
+            );
+            scheduler.Schedule(nextEvent);
+        };
+
+        // Schedule first play
+        var firstEvent = SatieAudioEvent.Callback(
+            dspClock.SecondsToSamples(startTime),
+            scheduleNext,
+            $"Repeating OneShot Start: {s.clip}"
+        );
+        scheduler.Schedule(firstEvent);
+
+        Debug.Log($"[DSP] Scheduled repeating oneshot '{s.clip}' starting at {startTime:F3}s");
+    }
+
+    /// <summary>
+    /// Schedule a stop event with fade-out
+    /// </summary>
+    void ScheduleDSPStopAfter(AudioSource src, double stopTime, float fadeOut, string trackKey)
+    {
+        if (fadeOut > 0f)
+        {
+            double fadeStartTime = stopTime - fadeOut;
+            var fadeEvent = SatieAudioEvent.Callback(
+                dspClock.SecondsToSamples(fadeStartTime),
+                () => {
+                    if (src && dspFade != null)
+                    {
+                        dspFade.FadeVolume(src, src.volume, 0f, fadeOut);
+                    }
+                },
+                $"Fade Start: {trackKey}"
+            );
+            scheduler.Schedule(fadeEvent);
+        }
+
+        // Schedule stop
+        var stopEvent = SatieAudioEvent.Callback(
+            dspClock.SecondsToSamples(stopTime),
+            () => {
+                if (src) src.Stop();
+            },
+            $"Stop: {trackKey}"
+        );
+        scheduler.Schedule(stopEvent);
     }
 
     // ===== Public API for Track Control =====
@@ -724,5 +861,75 @@ public class SatieRuntime : MonoBehaviour
     {
         masterMute = muted;
         ApplyMixerGroups();
+    }
+
+    // ===== DSP Timing API =====
+
+    /// <summary>
+    /// Get the DSP clock for sample-accurate timing
+    /// </summary>
+    public SatieDSPClock GetDSPClock()
+    {
+        return dspClock;
+    }
+
+    /// <summary>
+    /// Get the event scheduler
+    /// </summary>
+    public SatieScheduler GetScheduler()
+    {
+        return scheduler;
+    }
+
+    /// <summary>
+    /// Get the seeded random generator for reproducible renders
+    /// </summary>
+    public SatieRandom GetRandom()
+    {
+        return random;
+    }
+
+    /// <summary>
+    /// Get the DSP fade manager
+    /// </summary>
+    public SatieDSPFade GetDSPFade()
+    {
+        return dspFade;
+    }
+
+    /// <summary>
+    /// Check if DSP timing is initialized
+    /// </summary>
+    public bool IsDSPTimingEnabled()
+    {
+        return dspClock != null;
+    }
+
+    /// <summary>
+    /// Reset the random generator with a new seed
+    /// </summary>
+    public void ResetRandom(int newSeed)
+    {
+        if (random != null)
+        {
+            random.Reset(newSeed);
+            Debug.Log($"[SatieRuntime] Random seed reset to {newSeed}");
+        }
+    }
+
+    /// <summary>
+    /// Print DSP timing debug information
+    /// </summary>
+    public void PrintTimingDebug()
+    {
+        if (dspClock != null)
+        {
+            Debug.Log($"[DSP] {dspClock.GetDebugInfo()}");
+        }
+        if (scheduler != null)
+        {
+            Debug.Log($"[DSP] {scheduler.GetDebugInfo()}");
+            scheduler.PrintTimeline();
+        }
     }
 }

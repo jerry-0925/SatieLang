@@ -5,12 +5,11 @@ namespace Satie
 {
     internal static class SatieUtil
     {
-        // "birds/01to08"  → "birds/05" (random)
         static readonly Regex clipRangeRx =
-            new(@"^(.*\/)?(\d+)to(\d+)$",  // folders optional
+            new(@"^(.*\/)?(\d+)to(\d+)$",
                 RegexOptions.Compiled);
 
-        public static string ResolveClip(string pattern)
+        public static string ResolveClip(string pattern, SatieRandom random)
         {
             var m = clipRangeRx.Match(pattern);
             if (!m.Success)
@@ -18,9 +17,8 @@ namespace Satie
 
             int min = int.Parse(m.Groups[2].Value);
             int max = int.Parse(m.Groups[3].Value) + 1;
-            int choice = Random.Range(min, max);
+            int choice = random.Range(min, max);
 
-            // preserve zero-padding width (001, 0007, …)
             int digits = m.Groups[2].Value.Length;
             string idx = choice.ToString().PadLeft(digits, '0');
 

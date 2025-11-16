@@ -14,6 +14,9 @@ public class SatieRuntimeEditor : Editor
     private SerializedProperty masterVolumeProp;
     private SerializedProperty masterMuteProp;
 
+    // DSP Timing properties
+    private SerializedProperty randomSeedProp;
+
     // Component management
     private bool showComponentSetup = false;
     private bool hasAICodeGen = false;
@@ -49,6 +52,9 @@ public class SatieRuntimeEditor : Editor
         masterVolumeProp = serializedObject.FindProperty("masterVolume");
         masterMuteProp = serializedObject.FindProperty("masterMute");
 
+        // DSP Timing properties
+        randomSeedProp = serializedObject.FindProperty("randomSeed");
+
         CheckComponents();
         EditorApplication.update += OnEditorUpdate;
     }
@@ -74,6 +80,9 @@ public class SatieRuntimeEditor : Editor
 
         DrawHeader();
         DrawScriptConfiguration();
+
+        // DSP Timing section (NEW!)
+        DrawDSPTiming();
 
         if (runtime.ScriptFile != null)
         {
@@ -169,6 +178,14 @@ public class SatieRuntimeEditor : Editor
                 MessageType.Info);
         }
 
+        EditorGUILayout.Space(5);
+    }
+
+    private void DrawDSPTiming()
+    {
+        EditorGUILayout.Space(5);
+        EditorGUILayout.PropertyField(randomSeedProp,
+            new GUIContent("Random Seed", "Seed for reproducible renders (0 = time-based)"));
         EditorGUILayout.Space(5);
     }
 

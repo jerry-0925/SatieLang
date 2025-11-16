@@ -6,23 +6,25 @@ namespace Satie
     {
         public Statement.WanderType type = Statement.WanderType.None;
         public Vector3 minPos, maxPos;
-        public float hz = 0.3f; 
+        public float hz = 0.3f;
         private Vector3 seed;
+        private SatieDSPClock dspClock;
 
-        void Start()
+        public void Initialize(SatieDSPClock clock, SatieRandom random)
         {
+            dspClock = clock;
             seed = new Vector3(
-                Random.value * 1000f,
-                Random.value * 1000f,
-                Random.value * 1000f);
+                random.Range(0f, 1000f),
+                random.Range(0f, 1000f),
+                random.Range(0f, 1000f));
         }
 
         void Update()
         {
-            if (type == Statement.WanderType.None) return;
+            if (type == Statement.WanderType.None || dspClock == null) return;
 
             float scaledHz = hz * 0.01f;
-            float t = Time.time * scaledHz * 2f * Mathf.PI;
+            float t = (float)dspClock.CurrentTime * scaledHz * 2f * Mathf.PI;
 
             Vector3 noise = new Vector3(
                 Mathf.PerlinNoise(seed.x, t)       - 0.5f,

@@ -1,0 +1,23 @@
+
+group voices:
+volume = 0.3
+    10 * oneshot "voice/1to40" every 5:
+        volume = goto(0to0.35 as inquad in 0.5)
+        pitch = gobetween(0.1and1.2 as inquad in 5)
+        move = fly,-10to10,0to10,-10to10,1to4
+        visual = trail
+
+
+
+5 * oneshot "tomek/1to94" every 7to10:
+    volume = goto(0to0.4 as inquad in 0.5)
+    move = walk,-10to10,-10to10,0.5to1
+    visual = trail
+
+
+loop "ambience/rain":
+    volume = goto(0and0.1 as inquad in 12)
+
+oneshot "generation/Mad_laugh":
+    volume = 0.5
+    visual = sphere

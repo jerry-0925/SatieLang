@@ -351,8 +351,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7f3c9d4e8b2f4a4c9e1d7f8a3b6c9e2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  isRecording: 1
-  outputFileName: Radio-220
+  isRecording: 0
+  outputFileName: Webinar
   sampleRate: 48000
   autoAddEncoders: 1
   recordingDuration: 0
@@ -390,7 +390,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 571ab9772484754459a267c6b3e548c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scriptFile: {fileID: 2811297602134710623, guid: cafcd5ceda28646ae83030bcb3c1aa11, type: 3}
+  scriptFile: {fileID: 2811297602134710623, guid: a920f2146d4a4450c896db3bfbb1b241, type: 3}
   mixerGroups: []
   masterVolume: 1
   masterMute: 0
