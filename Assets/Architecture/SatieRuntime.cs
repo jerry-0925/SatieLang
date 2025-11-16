@@ -475,8 +475,6 @@ public class SatieRuntime : MonoBehaviour
         const double SCHEDULE_BUFFER = 0.1;
         double startTime = dspClock.CurrentTime + startsAtDelay + SCHEDULE_BUFFER;
 
-        Debug.Log($"[DSP] Scheduling {s.kind} '{s.clip}' at DSP time {startTime:F3}s (current: {dspClock.CurrentTime:F3}s, delay: {startsAtDelay:F3}s)");
-
         if (s.kind == "loop")
         {
             ScheduleDSPLoop(track, startTime, anySoloActive);
