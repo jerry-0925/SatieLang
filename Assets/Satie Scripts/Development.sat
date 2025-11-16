@@ -20,14 +20,26 @@ loop "ambience/water":
     move = x -1to1 y -1to1 z 0to2 at speed goto(0.1and10 as inquad in 10)
 endcomment
 
+loop ambience/forest
+    volume 0.2
+    pitch 0.6
+    visual cube
+    color white
+
 
 # color
 group music
 volume 1
+color red 255 green gobetween(40and255 in 10) blue gobetween(0and100 in 10)
     5 * oneshot piano/1to5 every 4to10
         volume 0.2 
         pitch 0.5to1.2
         move x -10to10 z -10to10 speed 1
         visual trail and cube
-        color red 255 green gobetween(40and255 in 10) blue gobetween(0and100 in 10)
+
+    2 * oneshot tomek/1to5 every 4to10
+        volume 0.2 
+        pitch 0.5to1.2
+        move x -10to10 z -10to10 speed 1
+        visual trail
 

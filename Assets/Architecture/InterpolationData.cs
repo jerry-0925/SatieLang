@@ -55,7 +55,7 @@ namespace Satie
             }
 
             // Try gobetween with optional easing (defaults to linear)
-            // Pattern: gobetween(0and1 in 2) or gobetween(0and1 as inquad in 2)
+            // Pattern: gobetween(0and1 in 2) or gobetween(0 and 1 in 2) or gobetween(0and1 as inquad in 2)
             var goBetweenPattern = @"gobetween\s*\(\s*(?<min>-?[\d.]+(?:to-?[\d.]+)?)\s*and\s*(?<max>-?[\d.]+(?:to-?[\d.]+)?)\s*(?:as\s+(?<ease>\w+))?\s+in\s+(?<dur>-?[\d.]+(?:to-?[\d.]+)?)\s*(?:\s+for\s+(?<count>ever|\d+))?\s*\)";
             var goBetweenRegex = new System.Text.RegularExpressions.Regex(goBetweenPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             var goBetweenMatch = goBetweenRegex.Match(interpolateStr);

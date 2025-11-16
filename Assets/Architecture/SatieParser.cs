@@ -152,8 +152,8 @@ namespace Satie
                 if (grp != null && body.StartsWith("endgroup", true, null))
                     continue; // don't treat "endgroup" as a statement
 
-                // open group
-                if (body.StartsWith("group ", true, null) && body.TrimEnd().EndsWith(":"))
+                // open group (no longer requires colon)
+                if (body.StartsWith("group ", true, null))
                 {
                     grp = new GroupCtx { indent = indent };
                     continue;
@@ -184,10 +184,12 @@ namespace Satie
                 {
                     var m = PropRx.Match(body);
                     string k = m.Groups["key"].Value.ToLower();
+                    string rawVal = m.Groups["val"].Value.Trim();
+                    Debug.Log($"[Satie] Property extracted: key='{k}' rawValue='{rawVal}'");
                     if (k is "move" or "visual")
                         Debug.LogWarning($"[Satie] '{k}' not allowed on a group – ignored.");
                     else
-                        grp.props[k] = m.Groups["val"].Value.Trim();
+                        grp.props[k] = rawVal;
                     continue;
                 }
 
@@ -793,9 +795,11 @@ namespace Satie
                 string normalized = v.Replace(" and ", " ");
 
                 // Parse named channels
+                Debug.Log($"[Satie] Normalized color string: '{normalized}'");
                 var redMatch = Regex.Match(normalized, @"red\s+(.+?)(?=\s+(?:green|blue)|$)", RegexOptions.IgnoreCase);
                 var greenMatch = Regex.Match(normalized, @"green\s+(.+?)(?=\s+(?:red|blue)|$)", RegexOptions.IgnoreCase);
                 var blueMatch = Regex.Match(normalized, @"blue\s+(.+?)(?=\s+(?:red|green)|$)", RegexOptions.IgnoreCase);
+                Debug.Log($"[Satie] Red match: {redMatch.Success}, Green match: {greenMatch.Success}, Blue match: {blueMatch.Success}");
 
                 if (redMatch.Success)
                 {
@@ -954,10 +958,13 @@ namespace Satie
         {
             InterpolationData interp = null;
 
+            Debug.Log($"[Satie] ParseColorChannel: {channelName} = '{value}'");
+
             // Try to parse as interpolation first
             if (value.Contains("gobetween") || value.Contains("goto") || value.Contains("interpolate"))
             {
                 interp = InterpolationData.Parse(value);
+                Debug.Log($"[Satie] InterpolationData.Parse returned: {(interp != null ? "SUCCESS" : "NULL")}");
 
                 if (interp != null)
                 {
