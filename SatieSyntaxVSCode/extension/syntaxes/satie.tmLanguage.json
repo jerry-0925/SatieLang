@@ -4,6 +4,9 @@
     "scopeName": "source.satie",
     "patterns": [
         {
+            "include": "#block-comments"
+        },
+        {
             "include": "#comments"
         },
         {
@@ -11,9 +14,6 @@
         },
         {
             "include": "#statements"
-        },
-        {
-            "include": "#strings"
         },
         {
             "include": "#properties"
@@ -29,6 +29,25 @@
         }
     ],
     "repository": {
+        "block-comments": {
+            "patterns": [
+                {
+                    "name": "comment.block.satie",
+                    "begin": "^\\s*comment\\b",
+                    "end": "^\\s*endcomment\\b",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "keyword.control.comment.begin.satie"
+                        }
+                    },
+                    "endCaptures": {
+                        "0": {
+                            "name": "keyword.control.comment.end.satie"
+                        }
+                    }
+                }
+            ]
+        },
         "comments": {
             "patterns": [
                 {
@@ -37,26 +56,11 @@
                 }
             ]
         },
-        "strings": {
-            "patterns": [
-                {
-                    "name": "string.quoted.double.satie",
-                    "begin": "\"",
-                    "end": "\"",
-                    "patterns": [
-                        {
-                            "name": "constant.character.escape.satie",
-                            "match": "\\\\."
-                        }
-                    ]
-                }
-            ]
-        },
         "groups": {
             "patterns": [
                 {
                     "name": "meta.group.satie",
-                    "match": "^\\s*(group)\\s+(\\w+)\\s*(:)",
+                    "match": "^\\s*(group)\\s+(\\w+)\\s*(:)?",
                     "captures": {
                         "1": {
                             "name": "keyword.control.group.satie"
@@ -78,8 +82,8 @@
         "statements": {
             "patterns": [
                 {
-                    "name": "meta.statement.satie",
-                    "match": "^\\s*(?:(\\d+)\\s*(\\*)\\s*)?(loop|oneshot)\\b",
+                    "name": "meta.statement.loop.satie",
+                    "match": "^\\s*(?:(\\d+)\\s*(\\*)\\s*)?(loop)\\s+([\\w\\/]+)",
                     "captures": {
                         "1": {
                             "name": "constant.numeric.count.satie"
@@ -89,6 +93,27 @@
                         },
                         "3": {
                             "name": "keyword.control.statement.satie"
+                        },
+                        "4": {
+                            "name": "string.unquoted.path.satie"
+                        }
+                    }
+                },
+                {
+                    "name": "meta.statement.oneshot.satie",
+                    "match": "^\\s*(?:(\\d+)\\s*(\\*)\\s*)?(oneshot)\\s+([\\w\\/]+)",
+                    "captures": {
+                        "1": {
+                            "name": "constant.numeric.count.satie"
+                        },
+                        "2": {
+                            "name": "keyword.operator.multiplication.satie"
+                        },
+                        "3": {
+                            "name": "keyword.control.statement.satie"
+                        },
+                        "4": {
+                            "name": "string.unquoted.path.satie"
                         }
                     }
                 }
@@ -98,13 +123,10 @@
             "patterns": [
                 {
                     "name": "meta.property.satie",
-                    "match": "^\\s*(volume|pitch|starts_at|duration|fade_in|fade_out|every|overlap|visual|move)\\s*(=)",
+                    "match": "^\\s*(volume|pitch|starts_at|duration|fade_in|fade_out|every|overlap|persistent|mute|solo|visual|move|color)\\s+",
                     "captures": {
                         "1": {
                             "name": "variable.parameter.satie"
-                        },
-                        "2": {
-                            "name": "keyword.operator.assignment.satie"
                         }
                     }
                 }
@@ -122,15 +144,27 @@
             "patterns": [
                 {
                     "name": "keyword.control.timing.satie",
-                    "match": "\\b(every|and|as|in|for|ever)\\b"
+                    "match": "\\b(every|and|as|in|for|ever|at|speed)\\b"
                 },
                 {
                     "name": "keyword.other.movement.satie",
-                    "match": "\\b(walk|fly|pos)\\b"
+                    "match": "\\b(walk|fly|pos|x|y|z)\\b"
                 },
                 {
                     "name": "keyword.other.visual.satie",
                     "match": "\\b(trail|sphere|cube|cylinder|capsule|object)\\b"
+                },
+                {
+                    "name": "keyword.other.color.channel.satie",
+                    "match": "\\b(red|green|blue)\\b"
+                },
+                {
+                    "name": "constant.other.color.name.satie",
+                    "match": "\\b(white|black|gray|grey|cyan|magenta|yellow|orange|purple|pink|brown)\\b"
+                },
+                {
+                    "name": "constant.other.color.hex.satie",
+                    "match": "#[0-9A-Fa-f]{6}\\b"
                 },
                 {
                     "name": "entity.name.ease.satie",
