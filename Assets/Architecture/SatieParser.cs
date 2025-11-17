@@ -21,6 +21,7 @@ namespace Satie
         public bool solo = false;
         public RangeOrValue fade_in = RangeOrValue.Null;
         public RangeOrValue fade_out = RangeOrValue.Null;
+        public bool randomStart = false;  // Random playback position in clip
 
         public enum WanderType { None, Walk, Fly, Fixed }
         public WanderType wanderType = WanderType.None;
@@ -132,9 +133,11 @@ namespace Satie
             @"^(?:\d+\s*\*\s*)?(?:loop|oneshot)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        // Syntax: key value (space-separated)
+        // Syntax: key value (space-separated), or standalone flag keywords
+        // Standalone flags: match key only (no value on same line)
+        // Other properties: match key + value on same line
         static readonly Regex PropRx = new(
-            @"^[ \t]*(?<key>\w+)\s+(?<val>[^\r\n#]+)",
+            @"^[ \t]*(?<key>\w+)(?:[ \t]+(?<val>[^\r\n#]+))?",
             RegexOptions.Multiline | RegexOptions.Compiled);
 
         sealed class GroupCtx
@@ -228,7 +231,11 @@ namespace Satie
                 {
                     var m = PropRx.Match(body);
                     string k = m.Groups["key"].Value.ToLower();
-                    string rawVal = m.Groups["val"].Value.Trim();
+
+                    // For standalone flag keywords, store empty string as value
+                    bool isStandaloneFlag = k is "overlap" or "persistent" or "mute" or "solo" or "randomstart" or "random_start";
+                    string rawVal = (!isStandaloneFlag && m.Groups["val"].Success) ? m.Groups["val"].Value.Trim() : "";
+
                     Debug.Log($"[Satie] Property extracted: key='{k}' rawValue='{rawVal}'");
                     if (k is "move" or "visual")
                         Debug.LogWarning($"[Satie] '{k}' not allowed on a group – ignored.");
@@ -279,7 +286,12 @@ namespace Satie
             foreach (Match p in PropRx.Matches(propsBlock))
             {
                 string k = p.Groups["key"].Value.ToLower();
-                string v = p.Groups["val"].Value.Trim();
+
+                // For standalone flag keywords, ignore any captured value
+                bool isStandaloneFlag = k is "overlap" or "persistent" or "mute" or "solo" or "randomstart" or "random_start";
+                string v = (!isStandaloneFlag && p.Groups["val"].Success) ? p.Groups["val"].Value.Trim() : "";
+
+                Debug.Log($"[Satie] Statement property: key='{k}' value='{v}' (standalone={isStandaloneFlag})");
                 switch (k)
                 {
                     case "volume":
@@ -299,10 +311,12 @@ namespace Satie
                     case "fade_in": s.fade_in = RangeOrValue.Parse(v); break;
                     case "fade_out": s.fade_out = RangeOrValue.Parse(v); break;
                     case "every": s.every = RangeOrValue.Parse(v); break;
-                    case "overlap": s.overlap = v.ToLower().StartsWith("t"); break;
-                    case "persistent": s.persistent = v.ToLower().StartsWith("t"); break;
-                    case "mute": s.mute = v.ToLower().StartsWith("t"); break;
-                    case "solo": s.solo = v.ToLower().StartsWith("t"); break;
+                    case "overlap": s.overlap = true; break;
+                    case "persistent": s.persistent = true; break;
+                    case "mute": s.mute = true; break;
+                    case "solo": s.solo = true; break;
+                    case "random_start":
+                    case "randomstart": s.randomStart = true; break;
                     case "visual": ParseVisual(s, v); break;
                     case "move": ParseMove(s,v); break;
                     case "color": ParseColor(s, v); break;
@@ -405,10 +419,12 @@ namespace Satie
                         case "fade_in" when !s.fade_in.isSet: s.fade_in = RangeOrValue.Parse(kv.Value); break;
                         case "fade_out" when !s.fade_out.isSet: s.fade_out = RangeOrValue.Parse(kv.Value); break;
                         case "every" when !s.every.isSet: s.every = RangeOrValue.Parse(kv.Value); break;
-                        case "overlap": s.overlap = kv.Value.ToLower().StartsWith("t"); break;
-                        case "persistent": s.persistent = kv.Value.ToLower().StartsWith("t"); break;
-                        case "mute": s.mute = kv.Value.ToLower().StartsWith("t"); break;
-                        case "solo": s.solo = kv.Value.ToLower().StartsWith("t"); break;
+                        case "overlap": s.overlap = true; break;
+                        case "persistent": s.persistent = true; break;
+                        case "mute": s.mute = true; break;
+                        case "solo": s.solo = true; break;
+                        case "random_start":
+                        case "randomstart": s.randomStart = true; break;
                     }
                 }
                 dst.Add(s);
@@ -1150,11 +1166,13 @@ namespace Satie
         static void ParseDelay(Statement s, string v)
         {
             // Syntax: delay wet 0.5 time 0.375 feedback 0.6 pingpong 1
+            Debug.Log($"[Satie] ParseDelay input: '{v}'");
 
             var wetMatch = Regex.Match(v, @"\b(?:wet|drywet)\s+(.+?)(?=\s+(?:time|feedback|pingpong)\s+|$)", RegexOptions.IgnoreCase);
             if (wetMatch.Success)
             {
                 string wetValue = wetMatch.Groups[1].Value.Trim();
+                Debug.Log($"[Satie] Delay wet matched: '{wetValue}'");
                 if (wetValue.Contains("interpolate") || wetValue.Contains("goto") || wetValue.Contains("gobetween"))
                     s.delayDryWetInterpolation = InterpolationData.Parse(wetValue);
                 else

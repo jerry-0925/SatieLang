@@ -1,25 +1,42 @@
+oneshot bicycle/10 every 1to1.5
+    volume goto(0and.2 in 0.5)
+    pitch gobetween(0.1to0.5and1.5 in 2to4)
+    randomstart
+    delay wet 0.9 time 0.5to0.9 feedback 0.2to0.5
+    filter mode highpass cutoff gobetween(5000and15000 in 5)
+    reverb wet gobetween(0.1and1 in 10) size 0.8
+    move fly
+    visual trail
+    color red 255 green 0 blue gobetween(0and100 in 5)
+    
+    comment
 
 
+comment
 
 # color
 group music
 volume 1
+mute
 color red 100 green gobetween(40and255 as sine in 10) blue gobetween(0and100 in 10)
     3 * oneshot piano/1to5 every 4to10
         volume 0.5
         pitch 1to1.5
         move x -10to10 speed 1
         visual trail
-        delay wet 0.5 time 0.375 feedback 0.6 pingpong 1
+        delay wet 0.5to0.9 time 0.5to0.9 feedback 0.6 pingpong 1
+        filter mode highpass cutoff 9000
+        randomstart
     loop ambience/water
-        volume 0.3
-        filter mode lowpass cutoff gobetween(100and3000 in 5)
+        volume 0.1
+        filter mode lowpass cutoff gobetween(100and10000 in 5)
+endgroup
 
 
 
 
 
-comment
+
     DSP Effects Examples for SatieLang
 
     Available effects:

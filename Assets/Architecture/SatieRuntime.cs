@@ -277,7 +277,13 @@ public class SatieRuntime : MonoBehaviour
                 src.maxDistance = 100f;
             }
         }
-        
+
+        // Random start position (useful for oneshots and loops)
+        if (s.randomStart && clip != null)
+        {
+            src.time = random.Range(0f, clip.length);
+        }
+
         src.Play();
 
         if (s.wanderType == Statement.WanderType.Walk ||
@@ -691,7 +697,15 @@ public class SatieRuntime : MonoBehaviour
                             persistentSource.volume = targetVol;
                         }
 
-                        persistentSource.time = 0f;
+                        // Random start position
+                        if (s.randomStart && newClip != null)
+                        {
+                            persistentSource.time = random.Range(0f, newClip.length);
+                        }
+                        else
+                        {
+                            persistentSource.time = 0f;
+                        }
                         persistentSource.Play();
 
                         float fadeOut = random.Sample(s.fade_out);
