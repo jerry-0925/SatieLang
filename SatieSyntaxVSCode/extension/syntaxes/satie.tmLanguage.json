@@ -60,7 +60,7 @@
             "patterns": [
                 {
                     "name": "meta.group.satie",
-                    "match": "^\\s*(group)\\s+(\\w+)\\s*(:)?",
+                    "match": "^\\s*(group)(?:\\s+(\\w+))?\\s*(:)?",
                     "captures": {
                         "1": {
                             "name": "keyword.control.group.satie"
@@ -122,8 +122,17 @@
         "properties": {
             "patterns": [
                 {
+                    "name": "meta.property.dsp.satie",
+                    "match": "\\b(reverb|delay|filter|distortion|eq)\\b",
+                    "captures": {
+                        "1": {
+                            "name": "support.function.dsp.satie"
+                        }
+                    }
+                },
+                {
                     "name": "meta.property.satie",
-                    "match": "^\\s*(volume|pitch|starts_at|duration|fade_in|fade_out|every|overlap|persistent|mute|solo|visual|move|color)\\s+",
+                    "match": "\\b(volume|pitch|starts_at|start|end|duration|fade_in|fade_out|every|overlap|persistent|mute|solo|randomstart|random_start|visual|move|color)\\b",
                     "captures": {
                         "1": {
                             "name": "variable.parameter.satie"
@@ -145,6 +154,14 @@
                 {
                     "name": "keyword.control.timing.satie",
                     "match": "\\b(every|and|as|in|for|ever|at|speed)\\b"
+                },
+                {
+                    "name": "keyword.other.dsp.parameter.satie",
+                    "match": "\\b(wet|drywet|time|feedback|pingpong|mode|cutoff|resonance|drive|size|roomsize|damp|damping|fade|low|mid|high|gain|freq|frequency)\\b"
+                },
+                {
+                    "name": "keyword.other.dsp.mode.satie",
+                    "match": "\\b(lowpass|highpass|bandpass|notch|peak|softclip|hardclip|tanh|cubic|asymmetric)\\b"
                 },
                 {
                     "name": "keyword.other.movement.satie",

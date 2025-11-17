@@ -1,3 +1,5 @@
+
+
 oneshot bicycle/10 every 1to1.5
     volume goto(0and.2 in 0.5)
     pitch gobetween(0.1to0.5and1.5 in 2to4)
@@ -6,10 +8,40 @@ oneshot bicycle/10 every 1to1.5
     filter mode highpass cutoff gobetween(5000and15000 in 5)
     reverb wet gobetween(0.1and1 in 10) size 0.8
     move fly
-    visual trail
-    color red 255 green 0 blue gobetween(0and100 in 5)
+    visual trail and sphere
+    color red 255 green 0 blue gobetween(0and200 in 5)
     
-    comment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 comment

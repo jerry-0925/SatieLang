@@ -10,7 +10,10 @@ namespace Satie
         public string kind;
         public string clip;
         public int    count = 1;
-        public RangeOrValue starts_at = RangeOrValue.Zero;
+        public RangeOrValue starts_at = RangeOrValue.Zero;  // Legacy - use 'start' instead
+        public RangeOrValue start = RangeOrValue.Zero;    // When to instantiate the track (in seconds)
+        public RangeOrValue end = RangeOrValue.Null;      // When to destroy the track (in seconds)
+        public RangeOrValue endFade = RangeOrValue.Null;  // Fade duration before end (in seconds)
         public RangeOrValue duration = RangeOrValue.Null;
         public RangeOrValue every = RangeOrValue.Null;
         public RangeOrValue volume = new(1f);
@@ -291,7 +294,6 @@ namespace Satie
                 bool isStandaloneFlag = k is "overlap" or "persistent" or "mute" or "solo" or "randomstart" or "random_start";
                 string v = (!isStandaloneFlag && p.Groups["val"].Success) ? p.Groups["val"].Value.Trim() : "";
 
-                Debug.Log($"[Satie] Statement property: key='{k}' value='{v}' (standalone={isStandaloneFlag})");
                 switch (k)
                 {
                     case "volume":
@@ -306,7 +308,9 @@ namespace Satie
                         else
                             s.pitch = RangeOrValue.Parse(v);
                         break;
-                    case "starts_at": s.starts_at = RangeOrValue.Parse(v); break;
+                    case "starts_at": s.starts_at = RangeOrValue.Parse(v); break;  // Legacy
+                    case "start": s.start = RangeOrValue.Parse(v); break;
+                    case "end": ParseEnd(s, v); break;
                     case "duration": s.duration = RangeOrValue.Parse(v); break;
                     case "fade_in": s.fade_in = RangeOrValue.Parse(v); break;
                     case "fade_out": s.fade_out = RangeOrValue.Parse(v); break;
@@ -414,7 +418,9 @@ namespace Satie
                         case "volume":
                         case "pitch":
                         case "color": break;   // done above
-                        case "starts_at" when !s.starts_at.isSet: s.starts_at = RangeOrValue.Parse(kv.Value); break;
+                        case "starts_at" when !s.starts_at.isSet: s.starts_at = RangeOrValue.Parse(kv.Value); break;  // Legacy
+                        case "start" when !s.start.isSet: s.start = RangeOrValue.Parse(kv.Value); break;
+                        case "end" when !s.end.isSet: ParseEnd(s, kv.Value); break;
                         case "duration" when !s.duration.isSet: s.duration = RangeOrValue.Parse(kv.Value); break;
                         case "fade_in" when !s.fade_in.isSet: s.fade_in = RangeOrValue.Parse(kv.Value); break;
                         case "fade_out" when !s.fade_out.isSet: s.fade_out = RangeOrValue.Parse(kv.Value); break;
@@ -1163,16 +1169,34 @@ namespace Satie
             }
         }
 
+        static void ParseEnd(Statement s, string v)
+        {
+            // Syntax: end 20 fade 5
+            // First, try to match just the time value (the part before "fade" if it exists)
+            var timeMatch = Regex.Match(v, @"^(.+?)(?=\s+fade\s+|$)", RegexOptions.IgnoreCase);
+            if (timeMatch.Success)
+            {
+                string timeValue = timeMatch.Groups[1].Value.Trim();
+                s.end = RangeOrValue.Parse(timeValue);
+            }
+
+            // Then look for optional fade parameter
+            var fadeMatch = Regex.Match(v, @"\bfade\s+(.+?)$", RegexOptions.IgnoreCase);
+            if (fadeMatch.Success)
+            {
+                string fadeValue = fadeMatch.Groups[1].Value.Trim();
+                s.endFade = RangeOrValue.Parse(fadeValue);
+            }
+        }
+
         static void ParseDelay(Statement s, string v)
         {
             // Syntax: delay wet 0.5 time 0.375 feedback 0.6 pingpong 1
-            Debug.Log($"[Satie] ParseDelay input: '{v}'");
 
             var wetMatch = Regex.Match(v, @"\b(?:wet|drywet)\s+(.+?)(?=\s+(?:time|feedback|pingpong)\s+|$)", RegexOptions.IgnoreCase);
             if (wetMatch.Success)
             {
                 string wetValue = wetMatch.Groups[1].Value.Trim();
-                Debug.Log($"[Satie] Delay wet matched: '{wetValue}'");
                 if (wetValue.Contains("interpolate") || wetValue.Contains("goto") || wetValue.Contains("gobetween"))
                     s.delayDryWetInterpolation = InterpolationData.Parse(wetValue);
                 else

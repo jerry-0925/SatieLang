@@ -166,6 +166,20 @@ public class SatieRuntime : MonoBehaviour
                 // Check if this track is already running
                 bool isAlreadyRunning = trackManager.HasTrack(stmtKey);
 
+                // Check if we're past the end time - if so, don't spawn/respawn
+                if (stmt.end.isSet)
+                {
+                    float endTime = random.Sample(stmt.end);
+                    if (dspClock.CurrentTime >= endTime)
+                    {
+                        if (isAlreadyRunning)
+                        {
+                            trackManager.StopTrack(stmtKey);
+                        }
+                        continue;
+                    }
+                }
+
                 // If unsoloed (when solo mode is active), stop it
                 if (!shouldSpawn)
                 {
@@ -552,11 +566,12 @@ public class SatieRuntime : MonoBehaviour
     {
         Statement s = track.Statement;
 
-        float startsAtDelay = random.Sample(s.starts_at);
+        // Use 'start' if set, otherwise fall back to legacy 'starts_at'
+        float startDelay = s.start.isSet ? random.Sample(s.start) : random.Sample(s.starts_at);
 
         // Add small buffer (0.1s) to ensure event fires in the future
         const double SCHEDULE_BUFFER = 0.1;
-        double startTime = dspClock.CurrentTime + startsAtDelay + SCHEDULE_BUFFER;
+        double startTime = dspClock.CurrentTime + startDelay + SCHEDULE_BUFFER;
 
         if (s.kind == "loop")
         {
@@ -565,6 +580,47 @@ public class SatieRuntime : MonoBehaviour
         else
         {
             ScheduleDSPOneShot(track, startTime, anySoloActive);
+        }
+
+        // Schedule track destruction if 'end' is specified
+        if (s.end.isSet)
+        {
+            float endTime = random.Sample(s.end);
+            float fadeTime = s.endFade.isSet ? random.Sample(s.endFade) : 0f;
+
+            // Schedule fade out if specified
+            if (fadeTime > 0f)
+            {
+                double fadeStartTime = dspClock.CurrentTime + endTime - fadeTime + SCHEDULE_BUFFER;
+                var fadeEvent = SatieAudioEvent.Callback(
+                    dspClock.SecondsToSamples(fadeStartTime),
+                    () => {
+                        // Fade all sources in this track
+                        foreach (var src in track.Sources)
+                        {
+                            if (src && !src.mute)
+                            {
+                                dspFade.FadeVolume(src, src.volume, 0f, fadeTime);
+                            }
+                        }
+                    },
+                    $"End Fade: {s.clip}"
+                );
+                scheduler.Schedule(fadeEvent);
+            }
+
+            // Schedule track destruction
+            double destroyTime = dspClock.CurrentTime + endTime + SCHEDULE_BUFFER;
+            var destroyEvent = SatieAudioEvent.Callback(
+                dspClock.SecondsToSamples(destroyTime),
+                () => {
+                    string trackKey = track.Key;
+                    trackManager.StopTrack(trackKey);
+                    Debug.Log($"[SatieRuntime] Track '{s.clip}' ended at {endTime}s");
+                },
+                $"End Track: {s.clip}"
+            );
+            scheduler.Schedule(destroyEvent);
         }
     }
 
