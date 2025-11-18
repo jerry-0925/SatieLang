@@ -89,7 +89,6 @@ audio_config.json.meta
 **/.DS_Store
 
 # Python virtual environments
-audioldm2_venv/
 *_venv/
 venv/
 

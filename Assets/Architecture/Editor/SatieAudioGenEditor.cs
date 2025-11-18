@@ -103,32 +103,20 @@ public class SatieAudioGenEditor : Editor
 
     private void DrawProviderSettings()
     {
-        showProviderSettings = EditorGUILayout.Foldout(showProviderSettings, "Provider Settings", true);
+        showProviderSettings = EditorGUILayout.Foldout(showProviderSettings, "ElevenLabs Settings", true);
 
         if (showProviderSettings)
         {
             EditorGUI.indentLevel++;
 
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("defaultProvider"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("numOptions"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("generateLoopingAudio"));
 
             EditorGUILayout.Space(5);
 
-            AudioProvider currentProvider = (AudioProvider)serializedObject.FindProperty("defaultProvider").enumValueIndex;
-
-            if (currentProvider == AudioProvider.ElevenLabs)
-            {
-                EditorGUILayout.LabelField("Eleven Labs Settings", EditorStyles.boldLabel);
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("elevenLabsDuration"));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("elevenLabsPromptInfluence"));
-            }
-            else if (currentProvider == AudioProvider.AudioLDM2)
-            {
-                EditorGUILayout.LabelField("AudioLDM2 Settings", EditorStyles.boldLabel);
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("audioldm2InferenceSteps"));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("audioldm2Duration"));
-            }
+            EditorGUILayout.LabelField("Audio Generation", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("elevenLabsDuration"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("elevenLabsPromptInfluence"));
 
             EditorGUI.indentLevel--;
         }
@@ -159,7 +147,7 @@ public class SatieAudioGenEditor : Editor
     private void DrawGenerationResults()
     {
         EditorGUILayout.Space(10);
-        EditorGUILayout.LabelField($"Generated Audio Options ({currentAudioResult.provider})", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Generated Audio Options", EditorStyles.boldLabel);
 
         if (currentAudioResult.audioData != null)
         {

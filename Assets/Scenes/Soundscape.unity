@@ -429,8 +429,6 @@ MonoBehaviour:
   defaultProvider: 0
   elevenLabsDuration: 10
   elevenLabsPromptInfluence: 0.3
-  audioldm2InferenceSteps: 200
-  audioldm2Duration: 10
   generateLoopingAudio: 0
 --- !u!114 &1228820747
 MonoBehaviour:

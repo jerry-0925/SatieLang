@@ -11,9 +11,7 @@ namespace Satie
 {
     public enum AudioProvider
     {
-        AudioLDM2,
-        ElevenLabs,
-        Test
+        ElevenLabs
     }
 
     [System.Serializable]
@@ -54,10 +52,6 @@ namespace Satie
         [Header("Eleven Labs Settings")]
         [SerializeField] [Range(1f, 30f)] private float elevenLabsDuration = 10f;
         [SerializeField] [Range(0f, 1f)] private float elevenLabsPromptInfluence = 0.3f;
-
-        [Header("AudioLDM2 Settings")]
-        [SerializeField] [Range(50, 500)] private int audioldm2InferenceSteps = 200;
-        [SerializeField] [Range(1f, 30f)] private float audioldm2Duration = 10f;
 
         [Header("Audio Settings")]
         [SerializeField] private bool generateLoopingAudio = false;
@@ -150,13 +144,9 @@ namespace Satie
                     prompt = prompt,
                     seed = seed,
                     sample_rate = sampleRate,
-                    num_inference_steps = audioldm2InferenceSteps,
-                    audio_length_in_s = audioldm2Duration,
-                    provider = provider.ToString().ToLower(),
-                    // Eleven Labs specific parameters
+                    provider = "elevenlabs",
                     duration_seconds = elevenLabsDuration,
                     prompt_influence = elevenLabsPromptInfluence,
-                    // Looping setting
                     looping = generateLoopingAudio
                 };
 
@@ -170,15 +160,12 @@ namespace Satie
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.SetRequestHeader("Content-Type", "application/json");
 
-                    // Add ElevenLabs API key as header if provider is ElevenLabs
-                    if (provider == AudioProvider.ElevenLabs)
+                    // Add ElevenLabs API key as header
+                    string apiKey = SatieAPIKeyManager.GetKey(SatieAPIKeyManager.Provider.ElevenLabs);
+                    if (!string.IsNullOrEmpty(apiKey))
                     {
-                        string apiKey = SatieAPIKeyManager.GetKey(SatieAPIKeyManager.Provider.ElevenLabs);
-                        if (!string.IsNullOrEmpty(apiKey))
-                        {
-                            request.SetRequestHeader("X-ElevenLabs-Key", apiKey);
-                            Debug.Log("[AudioGen] Added ElevenLabs API key to request header");
-                        }
+                        request.SetRequestHeader("X-ElevenLabs-Key", apiKey);
+                        Debug.Log("[AudioGen] Added ElevenLabs API key to request header");
                     }
 
                     // Send request
@@ -222,13 +209,9 @@ namespace Satie
             public string prompt;
             public int seed;
             public int sample_rate;
-            public int num_inference_steps;
-            public float audio_length_in_s;
             public string provider;
-            // Eleven Labs specific
             public float duration_seconds;
             public float prompt_influence;
-            // Looping audio
             public bool looping;
         }
 
