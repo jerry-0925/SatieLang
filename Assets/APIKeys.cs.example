@@ -1,0 +1,29 @@
+namespace Satie
+{
+    /// <summary>
+    /// Simple API key storage - NO ENCRYPTION BULLSHIT
+    ///
+    /// SETUP INSTRUCTIONS:
+    /// 1. Copy this file to APIKeys.cs (remove the .example)
+    /// 2. Add your actual API keys below
+    /// 3. The APIKeys.cs file is gitignored so your keys stay private
+    /// </summary>
+    public static class APIKeys
+    {
+        // Get your key from: https://console.anthropic.com/settings/keys
+        // Format: sk-ant-api03-... (very long, ~100+ characters)
+        public const string ANTHROPIC = "sk-ant-api03-your-key-here";
+
+        // Get your key from: https://platform.openai.com/api-keys
+        // Format: sk-proj-... or sk-...
+        public const string OPENAI = "";
+
+        // Get your key from: https://elevenlabs.io/api
+        // Format: 32 character string
+        public const string ELEVENLABS = "";
+
+        // Get your key from: https://makersuite.google.com/app/apikey
+        // Format: AIza... (39 characters)
+        public const string GOOGLE = "";
+    }
+}

@@ -409,8 +409,8 @@ public class SatieAudioGenEditor : Editor
                     Debug.Log($"Audio saved and can be used in Satie scripts: {savedPath}");
                 }
 
-                // Note: The new SatieAIAssistant automatically handles file changes via its caching system
-                Debug.Log("[AudioGen] Audio file added - SatieAIAssistant will detect changes automatically");
+                // Note: The new SatieAgentOrchestrator automatically handles audio library scanning
+                Debug.Log("[AudioGen] Audio file added - SatieAgentOrchestrator will detect changes automatically");
             }
         }
         catch (Exception e)

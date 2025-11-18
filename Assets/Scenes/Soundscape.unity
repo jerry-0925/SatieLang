@@ -390,7 +390,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 571ab9772484754459a267c6b3e548c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scriptFile: {fileID: 2811297602134710623, guid: fa5432d5be8734c00861246f81985c23, type: 3}
+  scriptFile: {fileID: 2811297602134710623, guid: 50d69df2bc2f94a8e82320fcb4e202d6, type: 3}
   randomSeed: 2
   mixerGroups: []
   masterVolume: 1
@@ -460,15 +460,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1228820742}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6789012345678abcdef01, type: 3}
+  m_Script: {fileID: 11500000, guid: 7e05896fa3f14910b3463406b292c658, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  assistantId: asst_t1EGraBUBJdQBxO2jqIx2M7U
-  vectorStoreId: vs_68cc3703814081919a1caee5e8287890
-  assistantName: Satie Code Generator
-  model: gpt-4-turbo-preview
+  orchestratorModel: claude-sonnet-4-5-20250929
+  specialistModel: claude-haiku-4-5-20251001
 --- !u!1 &1548540153
 GameObject:
   m_ObjectHideFlags: 0

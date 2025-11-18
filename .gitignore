@@ -84,6 +84,10 @@ crashlytics-build.properties
 audio_config.json
 audio_config.json.meta
 
+# NEW: Simple API key file (DO NOT COMMIT!)
+/[Aa]ssets/APIKeys.cs
+/[Aa]ssets/APIKeys.cs.meta
+
 # macOS system files
 .DS_Store
 **/.DS_Store

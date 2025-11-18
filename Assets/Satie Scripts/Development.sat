@@ -1,23 +1,7 @@
+loop ambience/forest
+    volume .1
+    filter mode lowpass cutoff gobetween(1000and5000 in 1)
 
-loop "ambience/water":
-    volume = 0.2
-    move = x -5to5 y 0to5 speed gobetween(0.0001and1 in 10)
-    visual = trail
-    comment
-    move = fly 
-    move = x gobetween(-1and-0.5)to1 and y 0to5 at speed 2 
-    move = x -1to1 and y -1to1 and z 0to2 at speed 1 
-    move = x -5to5 
-    move = y 0to5 
-    move = walk 
-    move = fly 
-    move = x -5to5 and y 0to5 at speed 2 
-    move = x -1to1 and y -1to1 and z 0to2 at speed 1 
-    move = x -5to5 
-    move = y 0to5 
-    move = z 0to5 
-
-    move = x gobetween(-1and-0.5 in 10)to1 and y 0to5 at speed 2
-    move = x -1to1 y -1to1 z 0to2 at speed goto(0.1and10 as inquad in 10)
-endcomment
-
+loop ambience/rain
+    volume .15
+    filter mode highpass cutoff 2000

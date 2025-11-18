@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -105,7 +106,7 @@ namespace Satie
         public RangeOrValue(float v) { min = max = v; isRange = false; isSet = true; }
         public RangeOrValue(float a, float b) { min = a; max = b; isRange = true;  isSet = true; }
 
-        public float Sample() => !isSet ? 0f : isRange ? Random.Range(min, max) : min;
+        public float Sample() => !isSet ? 0f : isRange ? UnityEngine.Random.Range(min, max) : min;
 
         public static RangeOrValue Parse(string s)
         {
@@ -252,6 +253,26 @@ namespace Satie
 
             if (grp != null) FlushGroup(outList, grp);
             return outList;
+        }
+
+        /// <summary>
+        /// Try to parse script and capture errors for AI agent verification
+        /// </summary>
+        public static bool TryParseScript(string script, out List<Statement> statements, out string errors)
+        {
+            statements = null;
+            errors = null;
+
+            try
+            {
+                statements = Parse(script);
+                return true;
+            }
+            catch (Exception e)
+            {
+                errors = $"Parse error: {e.Message}\n{e.StackTrace}";
+                return false;
+            }
         }
 
         //  PathFor

@@ -567,7 +567,7 @@ public class SatieRuntimeEditor : Editor
         {
             EditorGUI.indentLevel++;
 
-            DrawComponentStatus("AI Code Generation", hasAICodeGen, typeof(SatieAIAssistant));
+            DrawComponentStatus("AI Code Generation", hasAICodeGen, typeof(Satie.AI.SatieAgentOrchestrator));
             DrawComponentStatus("Audio Generation", hasAudioGen, typeof(SatieAudioGen));
             DrawComponentStatus("Spatial Audio", hasSpatialAudio, typeof(SatieSpatialAudio));
 
@@ -624,7 +624,7 @@ public class SatieRuntimeEditor : Editor
     {
         if (runtime == null) return;
 
-        hasAICodeGen = runtime.GetComponent<SatieAIAssistant>() != null;
+        hasAICodeGen = runtime.GetComponent<Satie.AI.SatieAgentOrchestrator>() != null;
         hasAudioGen = runtime.GetComponent<SatieAudioGen>() != null;
         hasSpatialAudio = runtime.GetComponent<SatieSpatialAudio>() != null;
     }
@@ -633,8 +633,8 @@ public class SatieRuntimeEditor : Editor
     {
         if (!hasAICodeGen)
         {
-            runtime.gameObject.AddComponent<SatieAIAssistant>();
-            Debug.Log("[Satie] Added SatieAIAssistant component");
+            runtime.gameObject.AddComponent<Satie.AI.SatieAgentOrchestrator>();
+            Debug.Log("[Satie] Added SatieAgentOrchestrator component");
         }
 
         if (!hasAudioGen)
