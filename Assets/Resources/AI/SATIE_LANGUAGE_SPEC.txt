@@ -1,0 +1,127 @@
+# SATIE LANGUAGE SPECIFICATION
+
+## SYNTAX RULES
+
+### Commands (NO colons, NO quotes)
+loop audio/file
+oneshot audio/file every 2to5
+5 * oneshot audio/file every 1to3
+
+### Properties (space-separated, NO equals unless legacy)
+volume 0.5
+volume 0.1to0.8
+pitch 1
+pitch 0.5to1.5
+fade_in 2
+fade_out 1to3
+
+### Numbers and Ranges
+- Single value: 0.5 or .5 (both work)
+- Range: 0.1to0.8 or .1to.8 (NO SPACES around "to")
+- ALWAYS use "to" for ranges (NOT "-" or "..")
+
+### Movement
+move walk
+move fly
+move pos 5 0 10
+
+### Visuals
+visual trail
+visual sphere
+visual cube
+visual trail and sphere
+
+### DSP Effects
+filter mode lowpass cutoff 2000
+filter mode highpass cutoff 5000
+reverb wet 0.5 size 0.8
+delay wet 0.6 time 0.4 feedback 0.3
+
+### Interpolation
+goto(AandB in seconds)
+gobetween(AandB in seconds)
+gobetween(AtoC andDtoE in seconds)
+
+Examples:
+volume goto(0and0.2 in 0.5)
+pitch gobetween(0.1to0.5and1.5 in 2to4)
+filter mode highpass cutoff gobetween(5000and15000 in 5)
+
+### Groups
+group name
+volume 0.5
+    loop audio/file
+        volume 0.3
+    oneshot audio/file every 2
+        pitch 0.8to1.2
+
+### Flags (standalone, no value)
+randomstart
+overlap
+persistent
+mute
+solo
+
+## COMPREHENSIVE WORKING EXAMPLE
+
+comment
+This is a complete, tested example demonstrating all major Satie features.
+Study this carefully - this is the correct, current syntax.
+endcomment
+
+group birds
+    volume 0.2
+    3 * oneshot animals/birds every 2to5
+        volume 0.1to0.3
+        pitch 0.8to1.2
+        move fly
+        visual trail
+endgroup
+
+group ambient
+    volume 0.15
+
+    loop ambience/forest
+        volume 0.1
+        filter mode lowpass cutoff 2000
+
+    loop ambience/rain
+        volume 0.05
+        fade_in 3
+endgroup
+
+group bicycles
+    5 * oneshot bicycle/10 every 1to1.5
+        volume goto(0and0.2 in 0.5)
+        pitch gobetween(0.1to0.5and1.5 in 2to4)
+        randomstart
+        delay wet 0.9 time 0.5to0.9 feedback 0.2to0.5
+        filter mode highpass cutoff gobetween(5000and15000 in 5)
+        reverb wet gobetween(0.1and1 in 10) size 0.8
+        move fly
+        visual trail and sphere
+        color gobetween(255and0 as inquad in 2)
+endgroup
+
+group movement_examples
+    oneshot animals/cow2 every 3to5
+        move walk
+        visual cube
+
+    oneshot animals/birds every 2to3
+        move fly
+        visual trail
+
+    oneshot prepared-piano/1 every 1to2
+        move y -10to10 speed 1
+        visual = cube
+endgroup
+
+## COMMON MISTAKES TO AVOID
+
+❌ loop "ambience/forest"  → ✅ loop ambience/forest
+❌ volume = 0.5            → ✅ volume 0.5
+❌ every 2-5               → ✅ every 2to5
+❌ move = fly              → ✅ move fly
+❌ 0.5 to 1.0              → ✅ 0.5to1.0 (NO SPACES)
+❌ pitch 0,5               → ✅ pitch 0.5 (use DOT not comma)

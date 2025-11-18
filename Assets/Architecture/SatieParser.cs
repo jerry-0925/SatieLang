@@ -160,8 +160,12 @@ namespace Satie
             GroupCtx grp = null;
             bool inBlockComment = false;
 
+            try
+            {
             for (int i = 0; i < lines.Length; ++i)
             {
+                try
+                {
                 string raw  = lines[i];
                 string trimmed = raw.TrimStart();
 
@@ -249,6 +253,33 @@ namespace Satie
                 }
 
                 Debug.LogWarning($"[Satie] Unrecognised line: '{body}'");
+                }
+                catch (SatieSyntaxException ex)
+                {
+                    // Add line number context and re-throw
+                    throw new SatieSyntaxException(
+                        ex.Message,
+                        ex.PropertyName,
+                        ex.InvalidValue,
+                        lines[i],
+                        i + 1
+                    );
+                }
+            }
+            }
+            catch (SatieSyntaxException)
+            {
+                throw; // Re-throw our custom exceptions with line info
+            }
+            catch (Exception ex)
+            {
+                throw new SatieSyntaxException(
+                    $"Unexpected error while parsing script: {ex.Message}",
+                    null,
+                    null,
+                    null,
+                    -1
+                );
             }
 
             if (grp != null) FlushGroup(outList, grp);
@@ -499,20 +530,22 @@ namespace Satie
 
         static void ParseMove(Statement s, string v)
         {
-            v = v.Trim();
-
-            // Helper to parse range strings like "-5to5" or "10"
-            static (float, float) ParseRange(string str)
+            try
             {
-                str = str.Trim();
-                if (str.Contains("to"))
+                v = v.Trim();
+
+                // Helper to parse range strings like "-5to5" or "10"
+                static (float, float) ParseRange(string str)
                 {
-                    var parts = str.Split(new[] { "to" }, System.StringSplitOptions.None);
-                    return (float.Parse(parts[0]), float.Parse(parts[1]));
+                    str = str.Trim();
+                    if (str.Contains("to"))
+                    {
+                        var parts = str.Split(new[] { "to" }, System.StringSplitOptions.None);
+                        return (float.Parse(parts[0]), float.Parse(parts[1]));
+                    }
+                    float val = float.Parse(str);
+                    return (val, val);
                 }
-                float val = float.Parse(str);
-                return (val, val);
-            }
 
             // Default values
             float xMin = -5f, xMax = 5f;
@@ -565,24 +598,6 @@ namespace Satie
             // New flexible syntax
             string input = v.ToLower();
 
-            // Check for just "walk" or "fly"
-            if (input == "walk")
-            {
-                s.wanderType = Statement.WanderType.Walk;
-                s.areaMin = new Vector3(-5f, 0f, -5f);
-                s.areaMax = new Vector3(5f, 0f, 5f);
-                s.wanderHz = new RangeOrValue(1f);
-                return;
-            }
-            else if (input == "fly")
-            {
-                s.wanderType = Statement.WanderType.Fly;
-                s.areaMin = new Vector3(-5f, -5f, -5f);
-                s.areaMax = new Vector3(5f, 5f, 5f);
-                s.wanderHz = new RangeOrValue(1f);
-                return;
-            }
-
             // Parse axis specifications and speed
             bool hasX = false, hasY = false, hasZ = false;
 
@@ -602,11 +617,31 @@ namespace Satie
                 }
                 else
                 {
-                    // Simple value or range
-                    speed = float.Parse(speedValue.Replace("to", "."));
+                    // Simple value or range - use RangeOrValue.Parse
+                    var speedRange = RangeOrValue.Parse(speedValue);
+                    s.wanderHz = speedRange;
+                    speed = speedRange.min; // Use min as starting value
                 }
 
                 v = v.Substring(0, speedMatch.Index).Trim(); // Remove speed part
+            }
+
+            // Check for just "walk" or "fly" (after removing speed)
+            if (input == "walk" || v.ToLower() == "walk")
+            {
+                s.wanderType = Statement.WanderType.Walk;
+                s.areaMin = new Vector3(-5f, 0f, -5f);
+                s.areaMax = new Vector3(5f, 0f, 5f);
+                s.wanderHz = new RangeOrValue(speed);
+                return;
+            }
+            else if (input == "fly" || v.ToLower() == "fly")
+            {
+                s.wanderType = Statement.WanderType.Fly;
+                s.areaMin = new Vector3(-5f, -5f, -5f);
+                s.areaMax = new Vector3(5f, 5f, 5f);
+                s.wanderHz = new RangeOrValue(speed);
+                return;
             }
 
             // Remove "and" but only when it's not inside parentheses (to preserve goto/gobetween syntax)
@@ -837,7 +872,32 @@ namespace Satie
             }
             else
             {
-                Debug.LogError($"[Satie] Invalid move syntax: '{v}'");
+                throw new SatieSyntaxException(
+                    "Invalid move syntax. Use 'move fly', 'move walk', or specify axes like 'move x -5to5 z -10to10'",
+                    "move",
+                    v
+                );
+            }
+            }
+            catch (FormatException ex)
+            {
+                throw new SatieSyntaxException(
+                    "Invalid number format in move command. Expected numeric values or ranges like '5', '-10to10', or '0.5to1.5'",
+                    "move",
+                    v
+                );
+            }
+            catch (SatieSyntaxException)
+            {
+                throw; // Re-throw our custom exceptions
+            }
+            catch (Exception ex)
+            {
+                throw new SatieSyntaxException(
+                    $"Unexpected error parsing move command: {ex.Message}",
+                    "move",
+                    v
+                );
             }
         }
 

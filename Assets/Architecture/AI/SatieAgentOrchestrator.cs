@@ -211,7 +211,12 @@ namespace Satie.AI
             var availableAudio = _libraryChecker.GetAvailableAudio();
             var audioLibrary = FormatAudioLibrary(availableAudio);
 
-            return $@"Output ONLY valid Satie code. No explanations, no markdown, no text before or after the code.
+            // Load language spec
+            string langSpec = LoadLanguageSpec();
+
+            return $@"{langSpec}
+
+Output ONLY valid Satie code. No explanations, no markdown, no text before or after the code.
 
 STRICT RULES:
 - Your response must be pure Satie code only
@@ -221,24 +226,19 @@ STRICT RULES:
 - Start directly with the Satie code
 - End directly with the Satie code
 
-CRITICAL SYNTAX RULES (NO EXCEPTIONS):
-- loop ""audio/file"": or oneshot ""audio/file"": (ALWAYS add colon)
-- Move commands: ONLY walk, fly, or pos (NO spaces after commas):
-  * move = walk,x,z,speed (4 params - example: move = walk,-10to10,5to15,1to2)
-  * move = fly,x,y,z,speed (5 params - example: move = fly,-15to15,0to10,-10to10,1to3)
-  * move = pos,x,y,z (4 params - example: move = pos,0,5,10)
-- Visual commands: ONLY sphere, trail, cube, or combinations:
-  * visual = sphere
-  * visual = trail
-  * visual = cube
-  * visual = ""sphere and trail""
-  * visual = object ""1to3""
-- NO spaces after commas in move commands
-- NO invalid move types like ""random"" or ""circle""
-- NO invalid visual types like ""flock"" or ""sparkle""
-- FLY MUST HAVE 5 PARAMETERS: x,y,z,speed
-- WALK MUST HAVE 4 PARAMETERS: x,z,speed
-- Ranges: 1to5, -10to10, 0.1to0.5
+CRITICAL SYNTAX RULES (NO COLONS, NO QUOTES, NO EQUALS):
+- Statements: loop audio/file (NOT loop ""audio/file"": or loop = ""audio/file"")
+- Statements: oneshot audio/file every 2to5 (NOT oneshot ""audio/file"": every 2to5)
+- Properties: volume 0.5 (NOT volume = 0.5 or volume: 0.5)
+- Properties: pitch 0.8to1.2 (space-separated, NO equals)
+- Move: move walk (NOT move = walk)
+- Move: move fly (NOT move = fly)
+- Move: move pos 5 0 10 (space-separated)
+- Visual: visual trail (NOT visual = trail)
+- Visual: visual sphere (NOT visual = sphere)
+- Visual: visual cube (NOT visual = cube)
+- Ranges: 0.5to1.0 (NO SPACES around 'to')
+- Numbers: Use dots not commas (0.5 not 0,5)
 
 {audioLibrary}
 
@@ -252,14 +252,15 @@ Generate valid Satie code following these exact syntax rules.";
             var promptBuilder = new StringBuilder();
 
             // Add syntax requirements
-            promptBuilder.AppendLine("CRITICAL SYNTAX RULES:");
-            promptBuilder.AppendLine("- Move commands: NO spaces after commas!");
-            promptBuilder.AppendLine("  * move = walk,x,z,speed (4 params - NOT walk, x, z, speed)");
-            promptBuilder.AppendLine("  * move = fly,x,y,z,speed (5 params - NOT fly, x, y, z, speed)");
-            promptBuilder.AppendLine("  * FLY MUST HAVE 5 PARAMETERS: x,y,z,speed");
-            promptBuilder.AppendLine("  * WALK MUST HAVE 4 PARAMETERS: x,z,speed");
-            promptBuilder.AppendLine("- ONLY use: walk, fly, pos for move commands");
-            promptBuilder.AppendLine("- ONLY use: sphere, trail, cube for visual commands");
+            promptBuilder.AppendLine("CRITICAL SYNTAX RULES (NO COLONS, NO QUOTES, NO EQUALS):");
+            promptBuilder.AppendLine("- Statements: loop audio/file (NOT loop = audio/file)");
+            promptBuilder.AppendLine("- Statements: oneshot audio/file every 2to5");
+            promptBuilder.AppendLine("- Properties: volume 0.5 (NOT volume = 0.5)");
+            promptBuilder.AppendLine("- Properties: pitch 0.8to1.2 (space-separated)");
+            promptBuilder.AppendLine("- Move: move walk (NOT move = walk)");
+            promptBuilder.AppendLine("- Move: move fly (NOT move = fly)");
+            promptBuilder.AppendLine("- Visual: visual trail (NOT visual = trail)");
+            promptBuilder.AppendLine("- Ranges: 0.5to1.0 (NO SPACES around to)");
             promptBuilder.AppendLine();
 
             // Add available samples info
@@ -386,6 +387,29 @@ Generate valid Satie code following these exact syntax rules.";
             }
 
             return code.Trim();
+        }
+
+        private string LoadLanguageSpec()
+        {
+            try
+            {
+                var specAsset = UnityEngine.Resources.Load<TextAsset>("AI/SATIE_LANGUAGE_SPEC");
+                if (specAsset != null)
+                {
+                    return specAsset.text;
+                }
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogWarning($"[Orchestrator] Could not load language spec: {e.Message}");
+            }
+
+            // Fallback: inline minimal spec
+            return @"SATIE SYNTAX:
+Commands (NO colons): loop audio/file, oneshot audio/file every 2to5
+Properties (space-separated): volume 0.5, pitch 0.8to1.2
+Ranges: Use 'to' with NO SPACES (0.5to1.0)
+Numbers: Use dots not commas (0.5 not 0,5)";
         }
 
         #endregion

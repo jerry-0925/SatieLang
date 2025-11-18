@@ -108,7 +108,21 @@ public class SatieRuntime : MonoBehaviour
         if (fullReset) HardReset();
 
         // Parse all statements first to check if any are soloed
-        var allStatements = SatieParser.Parse(scriptFile.text);
+        List<Satie.Statement> allStatements;
+        try
+        {
+            allStatements = SatieParser.Parse(scriptFile.text);
+        }
+        catch (Satie.SatieSyntaxException ex)
+        {
+            Debug.LogError(ex.Message);
+            return; // Don't continue with broken script
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[Satie] Unexpected error parsing script: {ex.Message}\n{ex.StackTrace}");
+            return;
+        }
         bool anySolo = allStatements.Any(s => s.solo);
 
         if (anySolo)

@@ -22,9 +22,6 @@ volume gobetween(0.1and0.5 as inquad in 100)
         volume 0.05to0.2
         pitch 0.8to1.2
     
-    oneshot gen waterfall with frogs singing every 20to40
-        volume 0.05to0.2
-        pitch 0.8to1.2
 endgroup
 
 

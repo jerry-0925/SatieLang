@@ -2,45 +2,46 @@ comment
 RadioPlay.sat
 HomeWork 3 - 220A: Computer Generated Sound
 This program is written in the Satie Domain Specific Language for Audio in Unity
+
+
+4 * oneshot random/radio every 5to25
+    volume gobetween(0to0.01and0.1to0.2 as inquad in 20)
+    pitch gobetween(0.5and1.2to1.5 as inquad in 30)
+    move  x -20to20 z -60to60 speed 0.1to0.5
+    visual cube
 endcomment
 
-4 * oneshot "random/radio" every 5to25:
-    volume = gobetween(0to0.01and0.1to0.2 as inquad in 20)
-    pitch = gobetween(0.5and1.2to1.5 as inquad in 30)
-    move = walk, -20to20, -60to60, 0.1to0.5
-    visual = cube
+group phrase
+volume goto(1and0 in 120)
+    2 * oneshot mphrases/1to3 every 15to25
+        start 10
+        pitch 0.5
+        volume goto(0and0.4 as inquad in 2)
+        move x -25to15 y 0to10 z -25to25 speed 0.2to0.6
+        visual trail
+    2 * oneshot mphrases/1to3 every 15to25
+        start 20
+        pitch 2
+        volume goto(0and0.2 as inquad in 2)
+        move fly
+        visual trail
 
-group phrase:
-volume = goto(1and0 as inquad in 120)
-    2 * oneshot "musical phrases/1to3" every 15to25:
-        starts_at = 10
-        pitch = 0.5
-        volume = goto(0and0.4 as inquad in 2)
-        move = fly, -25to15, 0to10, -25to25, 0.2to0.6
-        visual = trail
-    2 * oneshot "musical phrases/1to3" every 15to25:
-        starts_at = 20
-        pitch = 2
-        volume = goto(0and0.2 as inquad in 2)
-        move = fly, -15to15, 0to10, -5to5, 0.2to0.6
-        visual = trail
-
-group drones:
-volume = goto(1and0 as inquad in 120)
-    loop "music/drone":
-        volume = goto(0and0.3 as incubic in 15)
-        pitch = 0.5
-        move = fly, -15to15, 0to10, -5to5, 0.2to0.6
-        visual = sphere
-    loop "music/drone":
-        starts_at = 20
-        volume = goto(0and0.3 as incubic in 15)
-        pitch = 1
-        move = fly, -15to15, 0to10, -5to5, 0.2to0.6
-        visual = sphere
-    loop "music/drone":
-        starts_at = 40
-        volume = goto(0and0.3 as incubic in 15)
-        pitch = 1.5
-        move = fly, -15to15, 0to10, -5to5, 0.2to0.6
-        visual = sphere
+group drones
+volume goto(1and0 as inquad in 120)
+    loop music/drone
+        volume goto(0and0.3 as incubic in 15)
+        pitch 0.5
+        move x -15to15 y 0to10 z -5to5 speed 0.2to0.6
+        visual sphere
+    loop music/drone
+        start 20
+        volume goto(0and0.3 as incubic in 15)
+        pitch 1
+        move fly speed 0.2to0.6
+        visual sphere
+    loop music/drone
+        start 40
+        volume goto(0and0.3 in 15)
+        pitch 1.5
+        move fly
+        visual sphere

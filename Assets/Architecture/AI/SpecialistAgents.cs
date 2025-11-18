@@ -26,12 +26,12 @@ namespace Satie.AI
 
 Analyze the user's request and identify potential syntax requirements.
 
-VALID SYNTAX RULES:
-- Statements: loop ""clip"": or oneshot ""clip"":
-- Move commands: walk,x,z,speed (4 params) | fly,x,y,z,speed (5 params) | pos,x,y,z (4 params)
-- Visual commands: sphere | trail | cube | ""sphere and trail"" | object ""1to3""
-- NO SPACES after commas in move commands
-- Ranges: 1to5, -10to10, 0.1to0.5
+VALID SYNTAX RULES (NO COLONS, NO QUOTES):
+- Statements: loop audio/file OR oneshot audio/file every 2to5
+- Properties: volume 0.5 OR pitch 0.8to1.2 (space-separated, NO equals)
+- Move commands: move walk OR move fly OR move pos 5 0 10
+- Visual commands: visual sphere OR visual trail OR visual cube
+- Ranges: 1to5, -10to10, 0.1to0.5 (NO SPACES around 'to')
 
 Respond with ONLY a JSON object:
 {
@@ -303,13 +303,16 @@ Suggest the best available alternatives. Respond with ONLY a JSON object:
 
 Fix the syntax errors in the provided Satie code. Output ONLY the corrected code.
 
-CRITICAL RULES:
-- NO explanations, NO markdown, NO text before/after code
-- Move commands: NO spaces after commas (walk,x,z,speed NOT walk, x, z, speed)
-- fly MUST have 5 params: fly,x,y,z,speed
-- walk MUST have 4 params: walk,x,z,speed
-- pos MUST have 4 params: pos,x,y,z
-- All statements end with colon: loop ""clip"": or oneshot ""clip"":";
+CRITICAL SYNTAX RULES (NO COLONS, NO QUOTES, NO EQUALS):
+- Statements: loop audio/file (NOT loop ""audio/file"": or loop = ""audio/file"")
+- Statements: oneshot audio/file every 2to5 (NOT oneshot ""audio/file"": every 2to5)
+- Properties: volume 0.5 (NOT volume = 0.5 or volume: 0.5)
+- Properties: pitch 0.8to1.2 (space-separated, NO equals sign)
+- Move: move walk (NOT move = walk)
+- Visual: visual trail (NOT visual = trail)
+- Ranges: 0.5to1.0 (NO SPACES around 'to')
+- Numbers: Use dots not commas (0.5 not 0,5)
+- NO explanations, NO markdown, NO text before/after code";
 
             var request = new GenerateRequest
             {
