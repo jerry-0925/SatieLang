@@ -1,4 +1,5 @@
 group intro
+persistent
     loop ambience/forest
         volume goto(0and0.1 in 80)
         pitch 0.5
@@ -49,33 +50,41 @@ group intro
         start 120
         volume goto(0and0.3 in 40)
         filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
-    
+endgroup
 
+
+
+
+
+
+
+comment
 10 * oneshot tk/1to90 every 3to10
-    start 160
     volume 0.2to1
     pitch 0.8to1.2
-    move x -10to10 y 0to10 z -10to10 speed 1to3
+    move x -5to5 y 0to5 z -5to5 speed 1to3
     visual trail
     color red gobetween(100and255 as inoutquad in 15) green 0 blue 200
     filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
+    end 10 fade 5
 
 5 * oneshot piano/1to56 every 5to10
-    start 180
     volume 0.5to1
     randomstart
     pitch 0.8to1.2
-    move x -10to10 y 0to20 z -10to20 speed 1to3
+    move x -10to10 y 0to10 z -10to10 speed 1to3
     visual trail and sphere
     color yellow
     filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
+    end 10 fade 5
 
 5 * oneshot ppiano/1to46 every 5to10
-    start 200
     volume 0.5to0.8
     randomstart
     pitch 0.8to1.2
-    move x -10to10 y 0to20 z -10to20 speed 5
+    move x -10to10 y 0to5 z -10to20 speed 5
     visual trail and sphere
     color red 100 green 25 blue gobetween(100and255 as inoutquad in 15)
     filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
+    end 10 fade 5
+endcomment

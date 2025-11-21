@@ -556,8 +556,11 @@ public class SatieRuntime : MonoBehaviour
             scheduler.CancelAll();
         }
 
-        // Reset DSP clock to start fresh timing
-        if (dspClock != null)
+        // DO NOT reset DSP clock - this would restart interpolations on persistent tracks
+        // The clock continues running to preserve the state of persistent content
+        // Only reset it if there are no persistent tracks
+        int persistentCount = trackManager.GetPersistentTrackCount();
+        if (persistentCount == 0 && dspClock != null)
         {
             dspClock.Reset();
         }
@@ -569,7 +572,6 @@ public class SatieRuntime : MonoBehaviour
             random.Reset(seed);
         }
 
-        int persistentCount = trackManager.GetPersistentTrackCount();
         Debug.Log($"[SP] HardReset complete. {persistentCount} persistent tracks remain.");
     }
 
