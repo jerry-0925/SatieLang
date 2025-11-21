@@ -4,6 +4,7 @@ persistent
         volume goto(0and0.1 in 80)
         pitch 0.5
         filter mode lowpass cutoff goto(18000and100 as inoutquad in 300)
+        end 350
 
     oneshot water/1to4
         volume goto(0and0.5 in 20)
@@ -12,25 +13,29 @@ persistent
         visual trail
         color blue
         filter mode lowpass cutoff goto(18000and100 as inoutquad in 80)
+        end 150
     oneshot ambience/rain
         start 20
         volume goto(0and0.5 in 40)
         pitch 1
         filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
+        end 150
 
-    oneshot sacred/bells
+    oneshot sacred/bells every 50to100
         start 40
         volume goto(0and0.5 in 20)
         move fly speed 0.5
         delay wet 0.3 time 0.5to0.9 feedback 0.2to0.5
         visual trail
         color white
+        end 200
 
     oneshot sacred/mastermonk
         start 60
         volume goto(0and0.2 in 20)
         pitch goto(0and1 as incubic in 20)
         delay wet 0.3 time 0.5to0.9 feedback 0.2to0.5
+        filter mode lowpass cutoff goto(18000and0 as inoutquad in 200)
         move fly speed 0.5
         visual trail
         color white
@@ -44,39 +49,60 @@ persistent
 
     oneshot piece/13
         start 140
-        volume goto(0and0.3 in 40)
+        volume goto(0and1 in 60)
 
     oneshot campfire
         start 120
-        volume goto(0and0.3 in 40)
+        volume goto(0and0.5 in 40)
+        move walk
         filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
+    
+    oneshot end
+        start 280
+        volume 1
+        visual cube
+        color white
+
+    oneshot radioplay
+        start 280
+        volume .5
+        visual cube
+        color black
 endgroup
 
 
 
+oneshot end
+    volume 1
+    move x -10to10 speed 0.5
+    visual cube
+    color white
 
+oneshot radioplay
+    volume .5
+    move z -10to10 speed 0.5
+    visual cube
+    color black
 
 
 
 comment
 10 * oneshot tk/1to90 every 3to10
-    volume 0.2to1
+    volume 1
     pitch 0.8to1.2
     move x -5to5 y 0to5 z -5to5 speed 1to3
     visual trail
     color red gobetween(100and255 as inoutquad in 15) green 0 blue 200
     filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
-    end 10 fade 5
 
 5 * oneshot piano/1to56 every 5to10
-    volume 0.5to1
+    volume .8
     randomstart
     pitch 0.8to1.2
     move x -10to10 y 0to10 z -10to10 speed 1to3
     visual trail and sphere
     color yellow
     filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
-    end 10 fade 5
 
 5 * oneshot ppiano/1to46 every 5to10
     volume 0.5to0.8
@@ -86,5 +112,4 @@ comment
     visual trail and sphere
     color red 100 green 25 blue gobetween(100and255 as inoutquad in 15)
     filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
-    end 10 fade 5
 endcomment
