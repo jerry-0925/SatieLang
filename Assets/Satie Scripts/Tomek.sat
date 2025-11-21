@@ -7,9 +7,12 @@ volume gobetween(0.1and0.5 as inquad in 100)
     loop ambience/water
         volume goto(0and0.4 in 20)
         filter mode lowpass cutoff gobetween(200and2000 in 20)
-        move walk
-        visual = cube
+        move walk speed 1
+        visual cube
+        comment
         persistent
+        reverb wet 0.3 size 0.7
+        endcomment
 
     4 * oneshot bird/1to5 every 10to20
         volume 0.01to0.2

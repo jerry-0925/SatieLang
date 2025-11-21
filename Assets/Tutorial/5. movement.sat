@@ -1,0 +1,27 @@
+comment
+Movement
+* Movement is key in Satie - this will give the mix depth and dynamics
+endcomment
+
+
+loop ambience/playground
+    volume goto(0and.2 in 10)
+
+3 * oneshot animal/cow/1to2 every 6to12 # notice that you can also multiply and object
+    volume goto(0and0.1to0.15 in .5)
+    pitch 0.8to1.2
+    move walk # walk simply makes the object move in X and Z - not Y
+    visual cube
+
+oneshot animal/bird/5 every 5to10
+    volume goto(0and0.1 in .5)
+    pitch 0.6to0.8
+    move fly speed 1 # makes the object also move in the Y axis, notice that you can also add speed
+    visual trail
+
+
+oneshot ppiano/1to10 every 10to15
+    volume goto(0and0.2 in .5)
+    move x -10to10 y 0to15 z -10to5 speed 2to3 # here we're establishing ranges for movement in X, Y, and Z
+    visual trail
+    color red gobetween(0and255 as incubic in 20) green 255 blue 100

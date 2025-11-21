@@ -29,8 +29,14 @@ Analyze the user's request and identify potential syntax requirements.
 VALID SYNTAX RULES (NO COLONS, NO QUOTES):
 - Statements: loop audio/file OR oneshot audio/file every 2to5
 - Properties: volume 0.5 OR pitch 0.8to1.2 (space-separated, NO equals)
-- Move commands: move walk OR move fly OR move pos 5 0 10
-- Visual commands: visual sphere OR visual trail OR visual cube
+- Interpolation: volume goto(0and0.2 in 5) OR pitch gobetween(1and2 in 10)
+- Easing: gobetween(0and255 as incubic in 20) - supports: linear, inquad, incubic, inoutquad
+- Movement: move walk OR move fly speed 1to3 OR move x -10to10 y 0to15 z -10to5 speed 2
+- Color: color red gobetween(0and255 as incubic in 20) green 0to255 blue 100
+- Effects: delay wet 0.9 time 0.5to0.9 feedback 0.2to1
+          reverb wet 0.8 size 0.9
+          filter mode lowpass cutoff gobetween(300and3000 in 15)
+- Visual commands: visual sphere OR visual trail OR visual cube OR visual trail and sphere
 - Ranges: 1to5, -10to10, 0.1to0.5 (NO SPACES around 'to')
 
 Respond with ONLY a JSON object:
@@ -308,8 +314,14 @@ CRITICAL SYNTAX RULES (NO COLONS, NO QUOTES, NO EQUALS):
 - Statements: oneshot audio/file every 2to5 (NOT oneshot ""audio/file"": every 2to5)
 - Properties: volume 0.5 (NOT volume = 0.5 or volume: 0.5)
 - Properties: pitch 0.8to1.2 (space-separated, NO equals sign)
-- Move: move walk (NOT move = walk)
-- Visual: visual trail (NOT visual = trail)
+- Interpolation: volume goto(0and0.2 in 5) OR pitch gobetween(1and2 in 10)
+- Easing: gobetween(0and255 as incubic in 20) - supports: linear, inquad, incubic, inoutquad
+- Movement: move walk OR move fly speed 1to3 OR move x -10to10 y 0to15 z -10to5 speed 2
+- Color: color red gobetween(0and255 as incubic in 20) green 0to255 blue 100
+- Effects: delay wet 0.9 time 0.5to0.9 feedback 0.2to1
+          reverb wet 0.8 size 0.9
+          filter mode lowpass cutoff gobetween(300and3000 in 15)
+- Visual: visual trail OR visual sphere OR visual trail and cube (NOT visual = trail)
 - Ranges: 0.5to1.0 (NO SPACES around 'to')
 - Numbers: Use dots not commas (0.5 not 0,5)
 - NO explanations, NO markdown, NO text before/after code";
@@ -356,5 +368,114 @@ Fix these errors and output the corrected code ONLY.",
 
             return code.Trim();
         }
+    }
+
+    /// <summary>
+    /// Specialist agent for detecting requests for complete script templates
+    /// Matches user intent with existing .sat script files
+    /// </summary>
+    public class ScriptTemplateAgent
+    {
+        private readonly Dictionary<string, TemplateDefinition> _templates;
+
+        public ScriptTemplateAgent()
+        {
+            _templates = new Dictionary<string, TemplateDefinition>();
+            RegisterTemplates();
+        }
+
+        private void RegisterTemplates()
+        {
+            // Register TK.sat as the avant-garde/experimental template
+            _templates["avant-garde"] = new TemplateDefinition
+            {
+                ScriptPath = "Assets/Satie Scripts/TK.sat",
+                Keywords = new[] { "avant-garde", "avant garde", "experimental", "contemporary", "modern composition", "abstract", "atonal" },
+                Description = "Avant-garde experimental piece with evolving soundscapes"
+            };
+
+            // You can add more templates here in the future
+            // _templates["ambient"] = new TemplateDefinition { ... };
+        }
+
+        public ScriptTemplateResult CheckForTemplate(string prompt)
+        {
+            string lowerPrompt = prompt.ToLower();
+
+            // Check for keywords that indicate the user wants a complete piece (not modifications)
+            bool wantsNewPiece = lowerPrompt.Contains("make") ||
+                                lowerPrompt.Contains("create") ||
+                                lowerPrompt.Contains("generate") ||
+                                lowerPrompt.Contains("give me") ||
+                                lowerPrompt.Contains("show me") ||
+                                lowerPrompt.Contains("initial") ||
+                                lowerPrompt.Contains("starting") ||
+                                lowerPrompt.Contains("example") ||
+                                lowerPrompt.Contains("template") ||
+                                lowerPrompt.Contains("piece") ||
+                                lowerPrompt.Contains("composition") ||
+                                lowerPrompt.Contains("provide");
+
+            foreach (var template in _templates)
+            {
+                foreach (var keyword in template.Value.Keywords)
+                {
+                    if (lowerPrompt.Contains(keyword))
+                    {
+                        // If they want a new piece (not modifying existing), load the template
+                        if (wantsNewPiece)
+                        {
+                            return new ScriptTemplateResult
+                            {
+                                HasTemplate = true,
+                                TemplateName = template.Key,
+                                TemplateScript = LoadTemplateScript(template.Value.ScriptPath),
+                                Description = template.Value.Description
+                            };
+                        }
+                    }
+                }
+            }
+
+            return new ScriptTemplateResult { HasTemplate = false };
+        }
+
+        private string LoadTemplateScript(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    return File.ReadAllText(path);
+                }
+                else
+                {
+                    Debug.LogWarning($"[ScriptTemplate] Template file not found: {path}");
+                    return null;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[ScriptTemplate] Failed to load template: {e.Message}");
+                return null;
+            }
+        }
+    }
+
+    [System.Serializable]
+    public class TemplateDefinition
+    {
+        public string ScriptPath;
+        public string[] Keywords;
+        public string Description;
+    }
+
+    [System.Serializable]
+    public class ScriptTemplateResult
+    {
+        public bool HasTemplate;
+        public string TemplateName;
+        public string TemplateScript;
+        public string Description;
     }
 }

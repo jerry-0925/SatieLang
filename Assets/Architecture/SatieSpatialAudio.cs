@@ -134,6 +134,18 @@ namespace Satie
                 steamSource.dipoleWeight = 0.0f;
                 steamSource.dipolePower = 1.0f;
 
+                // Enable distance attenuation for moving objects
+                // This is critical for proper spatial audio with dynamic positioning
+                steamSource.distanceAttenuation = true;
+                steamSource.distanceAttenuationInput = DistanceAttenuationInput.CurveDriven; // Uses Unity's rolloff curve
+
+                // Improve binaural quality (slight performance cost, but better spatial accuracy)
+                steamSource.interpolation = HRTFInterpolation.Bilinear; // Better than Nearest, not as slow as Trilinear
+
+                // Enable air absorption for realistic high-frequency rolloff over distance
+                steamSource.airAbsorption = true;
+                steamSource.airAbsorptionInput = AirAbsorptionInput.SimulationDefined;
+
                 // Advanced features based on settings
                 steamSource.occlusion = enableOcclusion;
                 steamSource.occlusionType = OcclusionType.Raycast;

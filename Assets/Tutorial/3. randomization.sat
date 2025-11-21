@@ -1,13 +1,12 @@
-loop ambience/rain
-    volume 0.05
-    fade_in 3
+comment
+Randomization
+* One of the coolest things about Satie is that you can randomize almost everything
+* Use 'to' to make a range (e.g. pitch 0.1to1.5) 
+endcomment
 
-
-3 * oneshot animals/cow2 every 5to10
-    volume 0.1to0.2
-    pitch 0.5to1.2
-    move fly
-    visual trail
-
-
-
+oneshot piano/1to20 every 1to5
+    start 1to5
+    volume .2to.5
+    pitch .5to1.5
+    move x -10to10 y 0to10 z -5to5 speed 1to5
+    visual sphere

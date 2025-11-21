@@ -1,0 +1,14 @@
+comment
+Playback Parameters
+* This script will show you some of the playback parameters the language has
+endcomment
+
+loop ambience/forest # play forever
+    start 5
+    volume .1
+    pitch .5
+    end 10
+
+oneshot piano/16 # play once and stops
+    volume .4
+    pitch 0.7

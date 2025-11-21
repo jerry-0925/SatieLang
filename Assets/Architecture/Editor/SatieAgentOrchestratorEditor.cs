@@ -442,7 +442,7 @@ namespace Satie
                     }
                 }
 
-                Debug.LogWarning("[Orchestrator] No SatieRuntime found or script is empty.");
+                Debug.Log("[Orchestrator] No SatieRuntime found or script is empty. Starting with blank script.");
                 return "";
             }
             catch (System.Exception e)

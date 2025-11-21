@@ -1,0 +1,15 @@
+comment
+Color
+endcomment
+
+5 * oneshot ppiano/1to10 every 10to15
+    volume goto(0and0.2 in .5)
+    move x -10to10 y 0to15 z -10to5 speed 2to3
+    visual trail
+    color red gobetween(0and255 as incubic in 20) green 0to255 blue 0to255
+
+5 * oneshot ppiano/10to20 every 10to15
+    volume goto(0and0.2 in .5)
+    move x -10to10 y 0to15 z -10to5 speed 2to6
+    visual trail
+    color red gobetween(0and255 as incubic in 8) green gobetween(0and100 as inquad in 10) blue gobetween(0and155 in 15)

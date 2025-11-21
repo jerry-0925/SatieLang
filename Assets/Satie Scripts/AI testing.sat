@@ -1,44 +1,11 @@
-group ambient_rain
-    loop ambience/rain
-        volume 0.3
-        fade_in 2
-endgroup
+loop ambience/forest
+    volume 0.3
+    filter mode lowpass cutoff 2000
 
-group flying_birds
+loop ambience/rain
+    volume 0.1
+
+10 * oneshot piano/1 every 2to5
     volume 0.2
-    
-    oneshot bird/1 every 3to8
-        pitch 0.7to0.9
-        move fly
-        visual trail
-        color 255 0 0
-        randomstart
-    
-    oneshot bird/2 every 4to9
-        pitch 0.65to0.95
-        move fly
-        visual trail
-        color 255 0 0
-        randomstart
-    
-    oneshot bird/3 every 2to7
-        pitch 0.75to0.85
-        move fly
-        visual trail
-        color 255 0 0
-        randomstart
-    
-    oneshot bird/4 every 5to10
-        pitch 0.6to1.0
-        move fly
-        visual trail
-        color 255 0 0
-        randomstart
-    
-    oneshot bird/5 every 3to6
-        pitch 0.7to0.9
-        move fly
-        visual trail
-        color 255 0 0
-        randomstart
-endgroup
+    move fly
+    visual trail

@@ -1,0 +1,13 @@
+comment
+Modulation
+* There are two modulation functions: goto & gobetween
+endcomment
+
+
+loop ambience/forest
+    volume goto(0and.1 in 20)
+
+loop beat
+    start 5
+    volume goto(0and.1 in 20)
+    pitch gobetween(1and2 as inquad in 10) # it's possible to pass an ease function (default: linear)

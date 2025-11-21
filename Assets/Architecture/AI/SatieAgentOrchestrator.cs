@@ -45,8 +45,11 @@ namespace Satie.AI
         private SyntaxValidatorAgent _syntaxValidator;
         private LibraryCheckerAgent _libraryChecker;
         private CompilationVerifierAgent _compilationVerifier;
+        private ScriptTemplateAgent _scriptTemplateAgent;
 
         private bool _initialized = false;
+        private bool _initializing = false;
+        private Task _initializationTask;
 
         // Event for streaming updates
         public event Action<string> OnStreamUpdate;
@@ -59,7 +62,17 @@ namespace Satie.AI
 
         public async void Initialize()
         {
-            if (_initialized) return;
+            if (_initialized || _initializing) return;
+
+            _initializationTask = InitializeAsync();
+            await _initializationTask;
+        }
+
+        private async Task InitializeAsync()
+        {
+            if (_initialized || _initializing) return;
+
+            _initializing = true;
 
             try
             {
@@ -69,10 +82,11 @@ namespace Satie.AI
                 _orchestrator = new AnthropicProvider(orchestratorModel);
                 _specialist = new AnthropicProvider(specialistModel);
 
-                // Create specialist agents
+                // Create specialist agents (ScriptTemplateAgent doesn't need API access)
                 _syntaxValidator = new SyntaxValidatorAgent(_specialist);
                 _libraryChecker = new LibraryCheckerAgent(_specialist);
                 _compilationVerifier = new CompilationVerifierAgent(_specialist);
+                _scriptTemplateAgent = new ScriptTemplateAgent();
 
                 // Health check
                 bool orchestratorHealthy = await _orchestrator.IsHealthyAsync();
@@ -81,6 +95,7 @@ namespace Satie.AI
                 if (!orchestratorHealthy || !specialistHealthy)
                 {
                     UnityEngine.Debug.LogError("[Orchestrator] Health check failed. Please configure Anthropic API key.");
+                    _initializing = false;
                     return;
                 }
 
@@ -91,6 +106,10 @@ namespace Satie.AI
             {
                 UnityEngine.Debug.LogError($"[Orchestrator] Initialization failed: {e.Message}");
             }
+            finally
+            {
+                _initializing = false;
+            }
         }
 
         /// <summary>
@@ -98,10 +117,26 @@ namespace Satie.AI
         /// </summary>
         public async Task<CodeGenerationResult> GenerateCodeAsync(string userPrompt, string currentScript = null)
         {
+            // Wait for initialization if needed
             if (!_initialized)
             {
-                UnityEngine.Debug.LogError("[Orchestrator] Not initialized. Call Initialize() first.");
-                return new CodeGenerationResult { Success = false, Error = "Not initialized" };
+                if (_initializing && _initializationTask != null)
+                {
+                    UnityEngine.Debug.Log("[Orchestrator] Waiting for initialization to complete...");
+                    await _initializationTask;
+                }
+                else if (!_initializing)
+                {
+                    UnityEngine.Debug.Log("[Orchestrator] Starting initialization...");
+                    await InitializeAsync();
+                }
+
+                // If still not initialized after waiting, return error
+                if (!_initialized)
+                {
+                    UnityEngine.Debug.LogError("[Orchestrator] Initialization failed. Check API key configuration.");
+                    return new CodeGenerationResult { Success = false, Error = "Initialization failed. Check API key configuration." };
+                }
             }
 
             var overallStopwatch = Stopwatch.StartNew();
@@ -109,6 +144,34 @@ namespace Satie.AI
 
             try
             {
+                // Step 0: Check if this matches a script template (ULTRA FAST!)
+                // Templates work even without API access!
+                var templateResult = _scriptTemplateAgent.CheckForTemplate(userPrompt);
+
+                if (templateResult.HasTemplate && !string.IsNullOrEmpty(templateResult.TemplateScript))
+                {
+                    UnityEngine.Debug.Log($"[Orchestrator] Template matched: {templateResult.TemplateName}");
+                    OnStreamUpdate?.Invoke($"Loading {templateResult.Description}...\n\n{templateResult.TemplateScript}");
+
+                    overallStopwatch.Stop();
+
+                    return new CodeGenerationResult
+                    {
+                        Success = true,
+                        Code = templateResult.TemplateScript,
+                        Explanation = $"Loaded template: {templateResult.Description}",
+                        MissingSamples = new List<string>(),
+                        Metrics = new GenerationMetrics
+                        {
+                            TotalLatencyMs = overallStopwatch.ElapsedMilliseconds,
+                            ValidationLatencyMs = 0,
+                            GenerationLatencyMs = 0,
+                            VerificationLatencyMs = 0,
+                            RepairAttempts = 0
+                        }
+                    };
+                }
+
                 // Step 1: Immediate acknowledgment
                 OnStreamUpdate?.Invoke("Analyzing your request...");
                 await Task.Delay(50); // Small delay for UI responsiveness
@@ -226,19 +289,95 @@ STRICT RULES:
 - Start directly with the Satie code
 - End directly with the Satie code
 
+SIMPLICITY PRINCIPLE - CRITICAL:
+- ONLY add features the user explicitly requested
+- DO NOT add: visuals, color, reverb, delay, filters, randomstart, pitch variations UNLESS asked
+- Keep it minimal - use basic volume levels, no fancy modulation unless requested
+- Less is more - don't show off all available features
+- If user wants complexity, they will ask for it explicitly
+
+EXAMPLE - User says ""rain and piano flying"":
+CORRECT (simple):
+loop water/rain
+    volume 0.2
+
+oneshot piano/1 every 2to5
+    volume 0.3
+    move fly
+
+WRONG (over-engineered):
+loop water/rain
+    volume 0.3
+    filter mode lowpass cutoff 2000
+    reverb wet 0.4 size 0.8
+
+oneshot piano/1 every 2to4
+    pitch 0.8to1.2
+    move fly speed 1to3
+    visual trail and sphere
+    color red gobetween(100and255 as incubic in 5) green 150to200 blue 100
+    reverb wet 0.6 size 0.9
+    randomstart
+
 CRITICAL SYNTAX RULES (NO COLONS, NO QUOTES, NO EQUALS):
 - Statements: loop audio/file (NOT loop ""audio/file"": or loop = ""audio/file"")
 - Statements: oneshot audio/file every 2to5 (NOT oneshot ""audio/file"": every 2to5)
 - Properties: volume 0.5 (NOT volume = 0.5 or volume: 0.5)
 - Properties: pitch 0.8to1.2 (space-separated, NO equals)
-- Move: move walk (NOT move = walk)
-- Move: move fly (NOT move = fly)
-- Move: move pos 5 0 10 (space-separated)
-- Visual: visual trail (NOT visual = trail)
-- Visual: visual sphere (NOT visual = sphere)
-- Visual: visual cube (NOT visual = cube)
 - Ranges: 0.5to1.0 (NO SPACES around 'to')
 - Numbers: Use dots not commas (0.5 not 0,5)
+
+INTERPOLATION (goto & gobetween):
+- goto: Interpolates from 0 to target value once
+  Examples: volume goto(0and0.2 in 5)
+           pitch goto(0and1.5 in 10)
+           volume goto(0and0.1to0.15 in .5)  # can use ranges
+- gobetween: Oscillates between two values continuously
+  Examples: pitch gobetween(1and2 in 10)
+           filter mode lowpass cutoff gobetween(300and3000 in 15)
+           color red gobetween(0and255 as incubic in 20)
+           reverb wet gobetween(0.1and1 in 10)
+- Easing functions (optional): linear (default), inquad, incubic, inoutquad
+  Examples: pitch gobetween(1and2 as inquad in 10)
+           color red gobetween(0and255 as incubic in 20)
+
+MOVEMENT (critical for spatial depth and dynamics):
+- move walk: Moves object in X and Z axes only (ground movement)
+  Example: move walk
+- move fly: Moves object in X, Y, and Z axes (3D movement)
+  Example: move fly speed 1to3
+- move with ranges: Specify exact ranges for each axis
+  Example: move x -10to10 y 0to15 z -10to5 speed 2to3
+  Example: move x 0to0 z 10to10  # constrained movement
+- Speed: Optional speed parameter
+  Example: move fly speed 0.5
+           move walk speed 2to5
+
+COLOR (for visual objects):
+- Basic colors: color red, color blue, color green, color yellow, color white
+- RGB values: color red 255 green 0 blue 100
+- With ranges: color red 0to255 green 100 blue 50to200
+- With interpolation: color red gobetween(0and255 as incubic in 20) green 0to255 blue gobetween(0and155 in 15)
+  Example: color red gobetween(0and255 as incubic in 8) green gobetween(0and100 as inquad in 10) blue gobetween(0and155 in 15)
+
+VISUAL OBJECTS:
+- visual trail: Trail effect behind sound
+- visual sphere: Sphere object
+- visual cube: Cube object
+- Combine: visual trail and sphere, visual trail and cube
+
+AUDIO EFFECTS:
+- Delay: delay wet 0.9 time 0.5to0.9 feedback 0.2to1
+  Parameters: wet (dry/wet mix), time (delay time), feedback (repetitions)
+  Example: delay wet 0.7 time 0.3to0.8 feedback 0.6to0.9
+- Reverb: reverb wet 0.8 size 0.9
+  Parameters: wet (dry/wet mix), size (room size)
+  Example: reverb wet gobetween(0.1and1 in 10) size 0.8
+- Filter modes: lowpass, highpass, bandpass
+  Example: filter mode lowpass cutoff 3000
+           filter mode lowpass cutoff gobetween(300and3000 in 15)
+           filter mode highpass cutoff goto(100and12000 in 5)
+           filter mode lowpass cutoff 1000to5000
 
 {audioLibrary}
 
@@ -251,16 +390,21 @@ Generate valid Satie code following these exact syntax rules.";
         {
             var promptBuilder = new StringBuilder();
 
-            // Add syntax requirements
-            promptBuilder.AppendLine("CRITICAL SYNTAX RULES (NO COLONS, NO QUOTES, NO EQUALS):");
-            promptBuilder.AppendLine("- Statements: loop audio/file (NOT loop = audio/file)");
-            promptBuilder.AppendLine("- Statements: oneshot audio/file every 2to5");
-            promptBuilder.AppendLine("- Properties: volume 0.5 (NOT volume = 0.5)");
-            promptBuilder.AppendLine("- Properties: pitch 0.8to1.2 (space-separated)");
-            promptBuilder.AppendLine("- Move: move walk (NOT move = walk)");
-            promptBuilder.AppendLine("- Move: move fly (NOT move = fly)");
-            promptBuilder.AppendLine("- Visual: visual trail (NOT visual = trail)");
-            promptBuilder.AppendLine("- Ranges: 0.5to1.0 (NO SPACES around to)");
+            // Add simplicity reminder
+            promptBuilder.AppendLine("IMPORTANT - KEEP IT SIMPLE:");
+            promptBuilder.AppendLine("- ONLY use features the user explicitly asked for");
+            promptBuilder.AppendLine("- Don't add visuals, color, effects, or modulation unless requested");
+            promptBuilder.AppendLine("- Default to basic volume levels and simple syntax");
+            promptBuilder.AppendLine();
+
+            // Add syntax requirements with examples
+            promptBuilder.AppendLine("SYNTAX REFERENCE (use only if requested):");
+            promptBuilder.AppendLine("- Basic: loop audio/file OR oneshot audio/file every 2to5");
+            promptBuilder.AppendLine("- Movement: move walk OR move fly OR move x -10to10 y 0to15 z -10to5 speed 2");
+            promptBuilder.AppendLine("- Interpolation: volume goto(0and0.2 in 5) OR pitch gobetween(1and2 in 10)");
+            promptBuilder.AppendLine("- Effects: delay/reverb/filter (only if user asks for effects)");
+            promptBuilder.AppendLine("- Visuals: visual trail/sphere/cube (only if user asks for visuals)");
+            promptBuilder.AppendLine("- Color: color red/blue/etc (only if user asks for color)");
             promptBuilder.AppendLine();
 
             // Add available samples info

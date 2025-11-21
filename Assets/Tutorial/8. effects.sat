@@ -1,0 +1,18 @@
+comment
+Effects
+* Satie has a Delay, Reverb, LPF, BPF, HPF
+endcomment
+
+loop water/1
+    volume goto(0and.2 in 0.5)
+    filter mode lowpass cutoff gobetween(300and3000 in 15)
+
+oneshot bicycle/1to10 every 1to1.5
+    volume gobetween(0and.2 in 20)
+    randomstart
+    delay wet 0.9 time 0.5to0.9 feedback 0.2to1
+    reverb wet gobetween(0.1and1 in 10) size 0.8
+    move fly
+    visual trail and sphere
+    color red 255 green 0 blue gobetween(0and200 in 5)
+
