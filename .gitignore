@@ -102,3 +102,6 @@ venv/
 
 # Unity ProjectSettings auto-generated
 ProjectSettings/SceneTemplateSettings.json
+
+# Large audio files exceeding GitHub's 100MB limit
+Assets/Resources/Audio/ambience/hospital.wav
