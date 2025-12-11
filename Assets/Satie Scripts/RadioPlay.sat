@@ -2,6 +2,7 @@ comment
 RadioPlay.sat
 HomeWork 3 - 220A: Computer Generated Sound
 This program is written in the Satie Domain Specific Language for Audio in Unity
+endcomment
 
 
 4 * oneshot random/radio every 5to25
@@ -9,7 +10,7 @@ This program is written in the Satie Domain Specific Language for Audio in Unity
     pitch gobetween(0.5and1.2to1.5 as inquad in 30)
     move  x -20to20 z -60to60 speed 0.1to0.5
     visual cube
-endcomment
+
 
 group phrase
 volume goto(1and0 in 120)

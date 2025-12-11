@@ -6,11 +6,23 @@ using UnityEngine;
 /// <summary>
 /// Records all AudioSources in the scene as First-Order Ambisonic (FOA) B-format audio.
 /// Spatially encodes each source based on its position relative to the AudioListener.
-/// Outputs a 4-channel WAV file (W, X, Y, Z channels).
+/// Outputs either a 4-channel WAV file (W, X, Y, Z channels) or 2-channel binaural WAV.
 /// </summary>
 [RequireComponent(typeof(AudioListener))]
 public class AmbisonicRecorder : MonoBehaviour
 {
+    /// <summary>
+    /// Output format options for the ambisonic recorder
+    /// </summary>
+    public enum OutputFormat
+    {
+        [Tooltip("4-channel B-format (W, X, Y, Z)")]
+        Ambisonic4Channel,
+
+        [Tooltip("2-channel binaural stereo using HRTF-based decoding")]
+        BinauralHRTF
+    }
+
     [Header("Recording Controls")]
     [Tooltip("Start/stop recording")]
     public bool isRecording = false;
@@ -18,6 +30,9 @@ public class AmbisonicRecorder : MonoBehaviour
     [Header("Recording Settings")]
     [Tooltip("Output file name (without extension)")]
     public string outputFileName = "ambisonic_recording";
+
+    [Tooltip("Output format: 4-channel ambisonic or 2-channel binaural")]
+    public OutputFormat outputFormat = OutputFormat.Ambisonic4Channel;
 
     [Tooltip("Sample rate for recording (must match Unity's audio settings)")]
     public int sampleRate = 48000;
@@ -51,10 +66,18 @@ public class AmbisonicRecorder : MonoBehaviour
     private List<AmbisonicSourceEncoder> encoders = new List<AmbisonicSourceEncoder>();
     private AmbisonicSourceEncoder[] encodersSnapshot = new AmbisonicSourceEncoder[0]; // Thread-safe snapshot for audio thread
 
+    // Binaural decoding
+    private AmbisonicBinauralDecoder binauralDecoder;
+    private List<float> recordedSamplesLeft = new List<float>();  // Left channel for binaural
+    private List<float> recordedSamplesRight = new List<float>(); // Right channel for binaural
+
     void Start()
     {
         // Ensure sample rate matches Unity's audio settings
         sampleRate = AudioSettings.outputSampleRate;
+
+        // Initialize binaural decoder
+        binauralDecoder = new AmbisonicBinauralDecoder();
 
         if (autoAddEncoders)
         {
@@ -83,7 +106,9 @@ public class AmbisonicRecorder : MonoBehaviour
         {
             lock (lockObject)
             {
-                recordingDuration = (float)recordedSamplesW.Count / sampleRate;
+                int sampleCount = outputFormat == OutputFormat.Ambisonic4Channel ?
+                    recordedSamplesW.Count : recordedSamplesLeft.Count;
+                recordingDuration = (float)sampleCount / sampleRate;
             }
         }
 
@@ -130,13 +155,34 @@ public class AmbisonicRecorder : MonoBehaviour
         // Write the mixed frame to our recording buffer
         lock (lockObject)
         {
-            int startIndex = recordedSamplesW.Count;
-            for (int i = 0; i < frames; i++)
+            if (outputFormat == OutputFormat.Ambisonic4Channel)
             {
-                recordedSamplesW.Add(frameBufferW[i]);
-                recordedSamplesX.Add(frameBufferX[i]);
-                recordedSamplesY.Add(frameBufferY[i]);
-                recordedSamplesZ.Add(frameBufferZ[i]);
+                // Store 4-channel ambisonic
+                for (int i = 0; i < frames; i++)
+                {
+                    recordedSamplesW.Add(frameBufferW[i]);
+                    recordedSamplesX.Add(frameBufferX[i]);
+                    recordedSamplesY.Add(frameBufferY[i]);
+                    recordedSamplesZ.Add(frameBufferZ[i]);
+                }
+            }
+            else if (outputFormat == OutputFormat.BinauralHRTF)
+            {
+                // Decode to binaural stereo
+                float[] leftChannel = new float[frames];
+                float[] rightChannel = new float[frames];
+
+                binauralDecoder.DecodeToBinaural(
+                    frameBufferW, frameBufferX, frameBufferY, frameBufferZ,
+                    leftChannel, rightChannel, frames
+                );
+
+                // Store 2-channel binaural
+                for (int i = 0; i < frames; i++)
+                {
+                    recordedSamplesLeft.Add(leftChannel[i]);
+                    recordedSamplesRight.Add(rightChannel[i]);
+                }
             }
         }
 
@@ -185,13 +231,15 @@ public class AmbisonicRecorder : MonoBehaviour
     void StartRecording()
     {
         RefreshEncoders();
-        Debug.Log($"[AmbisonicRecorder] Recording started with {activeEncoders} encoders");
+        Debug.Log($"[AmbisonicRecorder] Recording started with {activeEncoders} encoders in {outputFormat} format");
         lock (lockObject)
         {
             recordedSamplesW.Clear();
             recordedSamplesX.Clear();
             recordedSamplesY.Clear();
             recordedSamplesZ.Clear();
+            recordedSamplesLeft.Clear();
+            recordedSamplesRight.Clear();
             recordingStartTime = AudioSettings.dspTime;
         }
         recordingDuration = 0f;
@@ -199,12 +247,20 @@ public class AmbisonicRecorder : MonoBehaviour
 
     void StopRecording()
     {
-        int sampleCount = recordedSamplesW.Count;
-        Debug.Log($"[AmbisonicRecorder] Recording stopped. Duration: {recordingDuration:F2}s, Samples: {sampleCount}");
+        int sampleCount = outputFormat == OutputFormat.Ambisonic4Channel ?
+            recordedSamplesW.Count : recordedSamplesLeft.Count;
+        Debug.Log($"[AmbisonicRecorder] Recording stopped. Duration: {recordingDuration:F2}s, Samples: {sampleCount}, Format: {outputFormat}");
 
         if (sampleCount > 0)
         {
-            SaveAmbisonicWAV();
+            if (outputFormat == OutputFormat.Ambisonic4Channel)
+            {
+                SaveAmbisonicWAV();
+            }
+            else
+            {
+                SaveBinauralWAV();
+            }
         }
         else
         {
@@ -285,6 +341,78 @@ public class AmbisonicRecorder : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"[AmbisonicRecorder] Failed to save WAV: {e.Message}");
+            Debug.LogError($"[AmbisonicRecorder] Stack trace: {e.StackTrace}");
+        }
+    }
+
+    /// <summary>
+    /// Saves the recorded binaural audio as a 2-channel stereo WAV file.
+    /// </summary>
+    void SaveBinauralWAV()
+    {
+        try
+        {
+            Debug.Log($"[AmbisonicRecorder] Starting binaural save process...");
+
+            // Create output directory if it doesn't exist
+            string outputDir = Path.Combine(Application.dataPath, "Recordings");
+            Debug.Log($"[AmbisonicRecorder] Output directory: {outputDir}");
+
+            if (!Directory.Exists(outputDir))
+            {
+                Directory.CreateDirectory(outputDir);
+                Debug.Log($"[AmbisonicRecorder] Created directory: {outputDir}");
+            }
+
+            // Generate timestamped filename
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string filename = $"{outputFileName}_binaural_{timestamp}.wav";
+            string fullPath = Path.Combine(outputDir, filename);
+            Debug.Log($"[AmbisonicRecorder] Full path: {fullPath}");
+
+            // Find the peak amplitude across both channels for normalization
+            int totalSamples = recordedSamplesLeft.Count;
+            Debug.Log($"[AmbisonicRecorder] Total samples to write: {totalSamples}");
+
+            float maxAmplitude = 0f;
+            for (int i = 0; i < totalSamples; i++)
+            {
+                maxAmplitude = Mathf.Max(maxAmplitude, Mathf.Abs(recordedSamplesLeft[i]));
+                maxAmplitude = Mathf.Max(maxAmplitude, Mathf.Abs(recordedSamplesRight[i]));
+            }
+
+            // Calculate normalization factor (leave some headroom to prevent clipping)
+            float normalizationFactor = 1f;
+            if (maxAmplitude > 0.95f) // Only normalize if we're close to clipping
+            {
+                normalizationFactor = 0.95f / maxAmplitude; // 0.95 gives us 5% headroom
+                Debug.Log($"[AmbisonicRecorder] Normalizing audio: peak {maxAmplitude:F3} -> factor {normalizationFactor:F3}");
+            }
+            else
+            {
+                Debug.Log($"[AmbisonicRecorder] No normalization needed, peak amplitude: {maxAmplitude:F3}");
+            }
+
+            // Interleave and normalize the 2 channels (Left, Right)
+            float[] interleavedData = new float[totalSamples * 2];
+
+            for (int i = 0; i < totalSamples; i++)
+            {
+                interleavedData[i * 2 + 0] = recordedSamplesLeft[i] * normalizationFactor;  // Left
+                interleavedData[i * 2 + 1] = recordedSamplesRight[i] * normalizationFactor; // Right
+            }
+
+            Debug.Log($"[AmbisonicRecorder] Calling WriteWAVFile...");
+            // Write WAV file
+            WriteWAVFile(fullPath, interleavedData, 2, sampleRate);
+
+            lastSavedPath = fullPath;
+            Debug.Log($"[AmbisonicRecorder] *** SUCCESS *** Saved to: {fullPath}");
+            Debug.Log($"[AmbisonicRecorder] Format: 2-channel Binaural, {sampleRate}Hz, {recordingDuration:F2}s");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[AmbisonicRecorder] Failed to save binaural WAV: {e.Message}");
             Debug.LogError($"[AmbisonicRecorder] Stack trace: {e.StackTrace}");
         }
     }
