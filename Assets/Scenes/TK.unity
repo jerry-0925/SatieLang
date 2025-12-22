@@ -352,7 +352,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isRecording: 0
-  outputFileName: Webinar
+  outputFileName: 
+  outputFormat: 0
   sampleRate: 48000
   autoAddEncoders: 1
   recordingDuration: 0

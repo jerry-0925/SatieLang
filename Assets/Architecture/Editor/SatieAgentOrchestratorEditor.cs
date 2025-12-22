@@ -29,6 +29,14 @@ namespace Satie
         private GUIStyle streamingStyle;
         private GenerationMetrics lastMetrics;
 
+        // Speech input
+        private SpeechInputHandler speechHandler;
+        private SpeechInputSettings speechSettings;
+        private bool isRecording = false;
+        private string recordingStatus = "";
+        private float recordingDuration = 0f;
+        private bool speechEnabled = false;
+
         private void OnEnable()
         {
             var orchestrator = target as SatieAgentOrchestrator;
@@ -38,6 +46,12 @@ namespace Satie
                 orchestrator.OnGenerationComplete += HandleGenerationComplete;
                 orchestrator.Initialize();
             }
+
+            // Initialize speech input
+            InitializeSpeechInput();
+
+            // Register for editor updates to handle keyboard shortcuts
+            EditorApplication.update += OnEditorUpdate;
         }
 
         private void OnDisable()
@@ -48,6 +62,10 @@ namespace Satie
                 orchestrator.OnStreamUpdate -= HandleStreamUpdate;
                 orchestrator.OnGenerationComplete -= HandleGenerationComplete;
             }
+
+            // Cleanup speech handler
+            EditorApplication.update -= OnEditorUpdate;
+            CleanupSpeechInput();
         }
 
         private void HandleStreamUpdate(string chunk)
@@ -81,9 +99,61 @@ namespace Satie
 
             EditorGUILayout.Space(10);
 
+            // Speech Input Section
+            DrawSpeechInputUI();
+
             // Prompt Section
             EditorGUILayout.LabelField("Prompt", EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginHorizontal();
             userPrompt = EditorGUILayout.TextArea(userPrompt, GUILayout.Height(80));
+
+            // Push-to-talk button (HOLD to record)
+            if (speechEnabled)
+            {
+                GUIStyle buttonStyle = new GUIStyle(GUI.skin.button);
+                if (isRecording)
+                {
+                    buttonStyle.normal.textColor = Color.red;
+                    buttonStyle.fontStyle = FontStyle.Bold;
+                }
+
+                // Use RepeatButton for hold-to-talk functionality
+                Rect buttonRect = GUILayoutUtility.GetRect(60, 80);
+
+                Event e = Event.current;
+                bool isButtonPressed = false;
+
+                // Detect mouse down/up on button
+                if (e.type == EventType.MouseDown && buttonRect.Contains(e.mousePosition))
+                {
+                    isButtonPressed = true;
+                    if (!isRecording)
+                    {
+                        StartRecording();
+                    }
+                    e.Use();
+                }
+                else if (e.type == EventType.MouseUp && isRecording)
+                {
+                    // Stop recording when mouse is released anywhere
+                    StopRecordingAndGenerate();
+                    e.Use();
+                }
+
+                // Draw the button
+                if (GUI.Button(buttonRect, isRecording ? "🎤\nHOLD" : "🎤\nHold", buttonStyle))
+                {
+                    // This handles the visual feedback
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+
+            // Show recording status
+            if (isRecording)
+            {
+                EditorGUILayout.HelpBox($"🎤 Recording... {recordingDuration:F1}s - KEEP HOLDING! Release to auto-generate", MessageType.Warning);
+            }
 
             EditorGUILayout.Space(10);
 
@@ -481,6 +551,225 @@ namespace Satie
                     richText = false
                 };
             }
+        }
+
+        // ============================
+        // SPEECH INPUT METHODS
+        // ============================
+
+        private void InitializeSpeechInput()
+        {
+            speechSettings = SpeechInputSettings.GetOrCreateSettings();
+
+            if (speechSettings == null)
+            {
+                Debug.LogWarning("[SpeechInput] Not enabled: Settings not found");
+                speechEnabled = false;
+                return;
+            }
+
+            string errorMessage = "";
+            if (speechSettings.IsValid(out errorMessage))
+            {
+                try
+                {
+                    // Get OpenAI key from centralized APIKeys.cs
+                    string openAIKey = speechSettings.GetOpenAIKey();
+                    speechHandler = new SpeechInputHandler(openAIKey);
+
+                    // Subscribe to events
+                    speechHandler.OnTranscriptionReceived += HandleTranscriptionReceived;
+                    speechHandler.OnTranscriptionError += HandleTranscriptionError;
+                    speechHandler.OnRecordingStarted += HandleRecordingStarted;
+                    speechHandler.OnRecordingProgress += HandleRecordingProgress;
+
+                    // Set preferred microphone if specified
+                    if (!string.IsNullOrEmpty(speechSettings.preferredMicrophoneDevice))
+                    {
+                        speechHandler.SetMicrophoneDevice(speechSettings.preferredMicrophoneDevice);
+                    }
+
+                    speechEnabled = true;
+                    Debug.Log("[SpeechInput] Initialized successfully");
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[SpeechInput] Initialization failed: {ex.Message}");
+                    speechEnabled = false;
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[SpeechInput] Not enabled: {errorMessage}");
+                speechEnabled = false;
+            }
+        }
+
+        private void CleanupSpeechInput()
+        {
+            if (speechHandler != null)
+            {
+                speechHandler.OnTranscriptionReceived -= HandleTranscriptionReceived;
+                speechHandler.OnTranscriptionError -= HandleTranscriptionError;
+                speechHandler.OnRecordingStarted -= HandleRecordingStarted;
+                speechHandler.OnRecordingProgress -= HandleRecordingProgress;
+
+                speechHandler.Dispose();
+                speechHandler = null;
+            }
+        }
+
+        private void OnEditorUpdate()
+        {
+            if (!speechEnabled || speechSettings == null)
+                return;
+
+            // Update recording duration
+            if (isRecording && speechHandler != null)
+            {
+                recordingDuration = speechHandler.RecordingDuration;
+                Repaint();
+            }
+
+            // Handle keyboard shortcuts for push-to-talk (HOLD functionality)
+            Event e = Event.current;
+            if (e != null && e.isKey)
+            {
+                bool modifierMatch = speechSettings.pushToTalkModifier == EventModifiers.None ||
+                                    (e.modifiers & speechSettings.pushToTalkModifier) != 0;
+
+                // Key down - start recording
+                if (e.type == EventType.KeyDown && e.keyCode == speechSettings.pushToTalkKey && modifierMatch && !isRecording)
+                {
+                    StartRecording();
+                    e.Use();
+                }
+                // Key up - stop recording AND auto-generate
+                else if (e.type == EventType.KeyUp && e.keyCode == speechSettings.pushToTalkKey && isRecording)
+                {
+                    StopRecordingAndGenerate();
+                    e.Use();
+                }
+            }
+        }
+
+        private void DrawSpeechInputUI()
+        {
+            if (!speechEnabled)
+            {
+                EditorGUILayout.HelpBox(
+                    "🎤 Speech Input Disabled\n" +
+                    "OpenAI API key not found in Assets/APIKeys.cs. Add your key to the OPENAI field.",
+                    MessageType.Warning
+                );
+                return;
+            }
+
+            // Show keyboard shortcut hint
+            string shortcutText = speechSettings.pushToTalkModifier == EventModifiers.None
+                ? speechSettings.pushToTalkKey.ToString()
+                : $"{speechSettings.pushToTalkModifier} + {speechSettings.pushToTalkKey}";
+
+            EditorGUILayout.HelpBox(
+                $"🎤 Speech Input Ready | HOLD '{shortcutText}' or button while talking - Auto-generates on release!",
+                MessageType.None
+            );
+        }
+
+        private void StartRecording()
+        {
+            if (speechHandler == null || isRecording || isGenerating)
+                return;
+
+            bool success = speechHandler.StartRecording();
+            if (success)
+            {
+                isRecording = true;
+                recordingStatus = "Recording...";
+                recordingDuration = 0f;
+                Debug.Log("[SpeechInput] Started recording");
+            }
+        }
+
+        private async void StopRecording()
+        {
+            if (speechHandler == null || !isRecording)
+                return;
+
+            isRecording = false;
+            recordingStatus = "Processing...";
+
+            try
+            {
+                await speechHandler.StopRecordingAndTranscribeAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[SpeechInput] Error during transcription: {ex.Message}");
+                recordingStatus = $"Error: {ex.Message}";
+            }
+
+            Repaint();
+        }
+
+        private async void StopRecordingAndGenerate()
+        {
+            if (speechHandler == null || !isRecording)
+                return;
+
+            isRecording = false;
+            recordingStatus = "Processing...";
+
+            try
+            {
+                await speechHandler.StopRecordingAndTranscribeAsync();
+                // Transcription will trigger HandleTranscriptionReceived which auto-generates
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[SpeechInput] Error during transcription: {ex.Message}");
+                recordingStatus = $"Error: {ex.Message}";
+            }
+
+            Repaint();
+        }
+
+        private void HandleTranscriptionReceived(string transcription)
+        {
+            Debug.Log($"[SpeechInput] Transcription: {transcription}");
+
+            // Set prompt to transcription (replace, not append)
+            userPrompt = transcription;
+
+            recordingStatus = "✓ Transcribed - Generating...";
+
+            // ALWAYS auto-submit after transcription
+            var orchestrator = target as SatieAgentOrchestrator;
+            if (orchestrator != null && !string.IsNullOrEmpty(transcription))
+            {
+                GenerateCode(orchestrator);
+            }
+
+            Repaint();
+        }
+
+        private void HandleTranscriptionError(string error)
+        {
+            Debug.LogWarning($"[SpeechInput] Transcription error: {error}");
+            recordingStatus = $"Error: {error}";
+            Repaint();
+        }
+
+        private void HandleRecordingStarted()
+        {
+            recordingStatus = "Recording...";
+            Repaint();
+        }
+
+        private void HandleRecordingProgress(float duration)
+        {
+            recordingDuration = duration;
+            Repaint();
         }
     }
 }
