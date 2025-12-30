@@ -11,29 +11,36 @@ You need **Unity 6000.1.1f1**. Download from:
 
 ### API Keys Configuration
 
-SatieLang uses API keys for AI-powered audio generation. You can configure them in two ways:
+SatieLang uses API keys for AI-powered features. Setup is simple:
 
-#### Option 1: C# File (Recommended)
-Edit `Assets/Satie Scripts/SatieAPIKeys.cs` and add your keys directly:
+1. Copy `Assets/APIKeys.cs.example` to `Assets/APIKeys.cs`
+2. Add your API keys:
 
 ```csharp
-public static class SatieAPIKeys
+public static class APIKeys
 {
-    public static string OpenAIKey = "your-openai-key-here";
-    public static string ElevenLabsKey = "your-elevenlabs-key-here";
+    public const string ANTHROPIC = "sk-ant-api03-...";   // Required for AI code generation
+    public const string OPENAI = "sk-proj-...";           // Required for speech input
+    public const string ELEVENLABS = "sk_...";            // Required for audio generation
+    public const string GOOGLE = "";                      // Optional
 }
 ```
 
 Get your keys from:
-- OpenAI: [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-- ElevenLabs: [https://elevenlabs.io/](https://elevenlabs.io/)
+- Anthropic: [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys)
+- OpenAI: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+- ElevenLabs: [elevenlabs.io/api](https://elevenlabs.io/api)
 
-#### Option 2: Unity API Key Manager
-1. In Unity, go to **Satie > API Key Manager**
-2. Enter your API keys in the fields
-3. Click "Save"
+The `APIKeys.cs` file is gitignored so your keys stay private.
 
-Keys are encrypted and stored in Unity's persistent data path.
+**Alternative:** Set environment variables with the `SATIE_API_KEY_` prefix:
+```bash
+export SATIE_API_KEY_ANTHROPIC="sk-ant-..."
+export SATIE_API_KEY_OPENAI="sk-proj-..."
+export SATIE_API_KEY_ELEVENLABS="sk_..."
+```
+
+Environment variables take priority over the file.
 
 ### Quick Start
 
