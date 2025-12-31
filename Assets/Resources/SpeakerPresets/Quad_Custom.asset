@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d985e1a2c7e449deb01484de1fea7fe, type: 3}
+  m_Name: Quad_Custom
+  m_EditorClassIdentifier: 
+  presetName: Quad Custom
+  speakerMode: 4
+  channels:
+  - role: 0
+    hardwareOutput: 7
+    enabled: 1
+    customLabel: Left (Analog 7)
+  - role: 1
+    hardwareOutput: 2
+    enabled: 1
+    customLabel: Right (Main Out 2)
+  - role: 4
+    hardwareOutput: 8
+    enabled: 1
+    customLabel: Left Surr (Analog 8)
+  - role: 5
+    hardwareOutput: 9
+    enabled: 1
+    customLabel: Right Surr (Analog 9)
+  routingNotes: "Custom Quad routing:\n- Left \u2192 Analog 7\n- Right \u2192 Main
+    Out 2\n- Left Surround \u2192 Analog 8\n- Right Surround \u2192 Analog 9\n\nConfigure
+    your audio interface's mixer to route:\nUnity Ch 0 (Left) \u2192 Physical Out
+    7\nUnity Ch 1 (Right) \u2192 Physical Out 2\nUnity Ch 2 (Left Surr) \u2192 Physical
+    Out 8\nUnity Ch 3 (Right Surr) \u2192 Physical Out 9"

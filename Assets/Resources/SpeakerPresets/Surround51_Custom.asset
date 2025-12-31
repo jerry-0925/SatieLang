@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d985e1a2c7e449deb01484de1fea7fe, type: 3}
+  m_Name: Surround51_Custom
+  m_EditorClassIdentifier: 
+  presetName: 5.1 Custom (Analog Outputs)
+  speakerMode: 6
+  channels:
+  - role: 0
+    hardwareOutput: 1
+    enabled: 1
+    customLabel: Left (Main Out)
+  - role: 1
+    hardwareOutput: 6
+    enabled: 1
+    customLabel: Right (Analog 6)
+  - role: 2
+    hardwareOutput: 7
+    enabled: 1
+    customLabel: Center (Analog 7)
+  - role: 3
+    hardwareOutput: 10
+    enabled: 1
+    customLabel: Sub (Analog 10)
+  - role: 4
+    hardwareOutput: 8
+    enabled: 1
+    customLabel: Left Surr (Analog 8)
+  - role: 5
+    hardwareOutput: 9
+    enabled: 1
+    customLabel: Right Surr (Analog 9)
+  routingNotes: "Custom 5.1 routing for multi-channel interface:\n- Left \u2192 Main
+    Out 1\n- Right \u2192 Main Out 2\n- Center \u2192 Analog 7\n- Subwoofer \u2192
+    Analog 10\n- Left Surround \u2192 Analog 8\n- Right Surround \u2192 Analog 9\n\nConfigure
+    your audio interface's mixer to route:\nUnity Ch 0 (Left) \u2192 Physical Out
+    1\nUnity Ch 1 (Right) \u2192 Physical Out 2\nUnity Ch 2 (Center) \u2192 Physical
+    Out 7\nUnity Ch 3 (LFE) \u2192 Physical Out 10\nUnity Ch 4 (LS) \u2192 Physical
+    Out 8\nUnity Ch 5 (RS) \u2192 Physical Out 9"

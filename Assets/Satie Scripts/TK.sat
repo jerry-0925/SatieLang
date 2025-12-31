@@ -79,7 +79,14 @@ persistent
     color red gobetween(10and100 as inoutquad in 15) green 100 blue 200
     filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
 
-
+5 * oneshot piano/1to56 every 3to6
+    volume 0.8
+    randomstart
+    pitch 0.8to1.2
+    move fly speed 1to3
+    visual trail
+    color white
+    filter mode lowpass cutoff goto(18000and100 as inoutquad in 100)
 
 comment
 5 * oneshot tk/1to90 every 3to10
